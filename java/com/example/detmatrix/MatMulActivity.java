@@ -1,6 +1,7 @@
 package com.example.detmatrix;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -10,15 +11,23 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.Random;
 
 /**
- * Mode two: matrix multiplication.
+ * Mode two: matrix multiplication. Also used as the timed redo screen when a
+ * problem is opened from the wrong-answer book.
  *
  * The size is chosen by the {@link ShapeStepActivity} wizard and passed in:
  *   m = rows of A, k = columns of A = rows of B, n = columns of B
  * so A is m x k, B is k x n and the product C is m x n.
+ *
+ * "Show answer" reveals exactly one cell of C per tap, row by row from left to
+ * right. The clock is stopped on the first tap, and the time is recorded once
+ * the last cell is revealed (in redo mode the problem is then marked done).
+ * The result cells are deliberately larger than the A/B cells so four-character
+ * values such as -350 fit.
  */
 public class MatMulActivity extends Activity {
 
@@ -32,7 +41,8 @@ public class MatMulActivity extends Activity {
     private static final String STATE_A = "a";
     private static final String STATE_B = "b";
     private static final String STATE_HAS_NUMBERS = "hasNumbers";
-    private static final String STATE_ANSWER_SHOWN = "answerShown";
+    private static final String STATE_REVEALED = "revealed";
+    private static final String STATE_RECORDED = "recorded";
     private static final String STATE_ELAPSED = "elapsed";
     private static final String STATE_RUNNING = "running";
 
@@ -47,15 +57,27 @@ public class MatMulActivity extends Activity {
     private TextView shapeLabel;
     private TextView timerView;
     private TextView answerHint;
+    private TextView practiceNote;
 
     private int[][] valuesA;
     private int[][] valuesB;
+    private int[][] product;
     private TextView[][] cellsA;
     private TextView[][] cellsB;
     private TextView[][] cellsC;
 
     private boolean hasNumbers;
     private boolean resumeTimerOnStart;
+    /** How many result cells have been revealed so far. */
+    private int revealCount;
+    /** This round's time has already been recorded. */
+    private boolean roundRecorded;
+    /** This round has already been added to the wrong-answer book. */
+    private boolean markedWrong;
+
+    private boolean practiceMode;
+    private String wrongKey;
+    private int wrongIndex;
 
     private final ElapsedTimer timer = new ElapsedTimer(new ElapsedTimer.Listener() {
         @Override
@@ -71,12 +93,17 @@ public class MatMulActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_matmul);
 
+        practiceMode = getIntent().getBooleanExtra(Practice.EXTRA_PRACTICE, false);
+        wrongKey = getIntent().getStringExtra(Practice.EXTRA_WRONG_KEY);
+        wrongIndex = getIntent().getIntExtra(Practice.EXTRA_WRONG_INDEX, -1);
+
         rowsA = getIntent().getIntExtra(ShapeStepActivity.EXTRA_M, 3);
         innerK = getIntent().getIntExtra(ShapeStepActivity.EXTRA_K, 3);
         colsB = getIntent().getIntExtra(ShapeStepActivity.EXTRA_N, 3);
 
         timerView = (TextView) findViewById(R.id.timer);
         answerHint = (TextView) findViewById(R.id.answer_hint);
+        practiceNote = (TextView) findViewById(R.id.practice_note);
         shapeLabel = (TextView) findViewById(R.id.shape_label);
         rowAb = (LinearLayout) findViewById(R.id.row_ab);
         matrixC = (LinearLayout) findViewById(R.id.matrix_c);
@@ -100,27 +127,84 @@ public class MatMulActivity extends Activity {
                 onShowAnswer();
             }
         });
+        ((Button) findViewById(R.id.mark_wrong)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onMarkWrong();
+            }
+        });
+        findViewById(R.id.wrong_book).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MatMulActivity.this, WrongShapesActivity.class));
+            }
+        });
+        findViewById(R.id.stats).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MatMulActivity.this, StatsActivity.class)
+                        .putExtra(StatsActivity.EXTRA_MODE, StatsStore.MODE_MATMUL));
+            }
+        });
+
+        if (practiceMode) {
+            applyPracticeUi();
+        }
 
         if (savedInstanceState != null) {
             restoreState(savedInstanceState);
+        } else if (practiceMode) {
+            rebuild();
+            loadPracticeValues();
         } else {
             rebuild();
         }
+    }
+
+    /** Redo mode: change the title and hide the controls that make no sense here. */
+    private void applyPracticeUi() {
+        ((TextView) findViewById(R.id.screen_title)).setText(R.string.practice_hint);
+        findViewById(R.id.next).setVisibility(View.GONE);
+        findViewById(R.id.mark_wrong).setVisibility(View.GONE);
+        findViewById(R.id.wrong_book).setVisibility(View.GONE);
+        findViewById(R.id.stats).setVisibility(View.GONE);
+    }
+
+    /** Redo mode: fill A and B with the saved problem and start the clock. */
+    private void loadPracticeValues() {
+        int[] flatA = getIntent().getIntArrayExtra(Practice.EXTRA_VALUES_A);
+        int[] flatB = getIntent().getIntArrayExtra(Practice.EXTRA_VALUES_B);
+        if (flatA == null || flatB == null) {
+            finish();
+            return;
+        }
+        fillFromFlat(valuesA, cellsA, flatA);
+        fillFromFlat(valuesB, cellsB, flatB);
+        hasNumbers = true;
+        timer.start();
     }
 
     /** Rebuild the A, B and C grids for the current size and clear this round. */
     private void rebuild() {
         shapeLabel.setText(getString(R.string.shape_label, rowsA, innerK, innerK, colsB));
 
+        DisplayMetrics dm = getResources().getDisplayMetrics();
         int cell = cellSizePx();
-        float textSp = Math.max(10f,
-                cell / getResources().getDisplayMetrics().density * 0.34f);
+        float textSp = Math.max(10f, cell / dm.density * 0.34f);
+
+        // Result cells are sized separately so -350 style values fit.
+        int cellC = cellSizeCPx();
+        float textSpC = Math.max(12f, cellC / dm.density * 0.34f);
 
         valuesA = new int[rowsA][innerK];
         valuesB = new int[innerK][colsB];
         cellsA = new TextView[rowsA][innerK];
         cellsB = new TextView[innerK][colsB];
         cellsC = new TextView[rowsA][colsB];
+        product = null;
+        revealCount = 0;
+        roundRecorded = false;
+        markedWrong = false;
 
         rowAb.removeAllViews();
         matrixC.removeAllViews();
@@ -144,10 +228,11 @@ public class MatMulActivity extends Activity {
         rowAb.addView(times);
         rowAb.addView(boxB);
 
-        buildGrid(matrixC, cellsC, cell, textSp);
+        buildGrid(matrixC, cellsC, cellC, textSpC);
 
         hasNumbers = false;
         answerHint.setText("");
+        practiceNote.setVisibility(View.GONE);
         timer.reset();
     }
 
@@ -191,6 +276,25 @@ public class MatMulActivity extends Activity {
         return Math.round(cellDp * dm.density);
     }
 
+    /** C sits on its own row with at most 4 columns, so it can afford larger cells. */
+    private int cellSizeCPx() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        float widthDp = dm.widthPixels / dm.density;
+        float available = widthDp - 20f;
+        float cellDp = available / colsB * 0.9f;
+        if (cellDp > 58f) {
+            cellDp = 58f;
+        }
+        if (cellDp < 42f) {
+            cellDp = 42f;
+        }
+        return Math.round(cellDp * dm.density);
+    }
+
+    private int totalResults() {
+        return rowsA * colsB;
+    }
+
     // --------------------------------------------------------------- actions
 
     /** "Next": draw new A and B, clear C, reset and start the timer. */
@@ -214,29 +318,80 @@ public class MatMulActivity extends Activity {
                 cellsC[r][c].setText("");
             }
         }
+        product = null;
+        revealCount = 0;
+        roundRecorded = false;
+        markedWrong = false;
         hasNumbers = true;
         answerHint.setText("");
+        practiceNote.setVisibility(View.GONE);
         timer.start();
     }
 
-    /** "Show answer": stop the clock and fill in the whole product C. */
+    /** "Show answer": reveal the next cell of C; the first tap stops the clock. */
     private void onShowAnswer() {
         if (!hasNumbers) {
             answerHint.setText(getString(R.string.need_numbers_matmul));
             return;
         }
-        timer.stop();
-        showProduct();
-        answerHint.setText("");
+        if (revealCount == 0) {
+            timer.stop();
+        }
+        if (revealCount >= totalResults()) {
+            return;
+        }
+        if (product == null) {
+            product = multiply(valuesA, valuesB);
+        }
+        int r = revealCount / colsB;
+        int c = revealCount % colsB;
+        cellsC[r][c].setText(String.valueOf(product[r][c]));
+        revealCount++;
+
+        if (revealCount >= totalResults()) {
+            onAllRevealed();
+        } else {
+            answerHint.setText(getString(R.string.reveal_progress, revealCount, totalResults()));
+        }
     }
 
-    private void showProduct() {
-        int[][] c = multiply(valuesA, valuesB);
-        for (int r = 0; r < rowsA; r++) {
-            for (int j = 0; j < colsB; j++) {
-                cellsC[r][j].setText(String.valueOf(c[r][j]));
+    /**
+     * The last cell is revealed: in normal mode record the time, in redo mode
+     * mark the problem done.
+     */
+    private void onAllRevealed() {
+        answerHint.setText("");
+        if (practiceMode) {
+            if (wrongKey != null) {
+                WrongBook.markDone(this, wrongKey, wrongIndex);
             }
+            practiceNote.setText(R.string.practice_done);
+            practiceNote.setVisibility(View.VISIBLE);
+        } else if (!roundRecorded) {
+            roundRecorded = true;
+            StatsStore.record(this, StatsStore.MODE_MATMUL, timer.elapsed());
         }
+    }
+
+    /** "Wrong": add the current problem to the collection for this size. */
+    private void onMarkWrong() {
+        if (!hasNumbers) {
+            toast(R.string.toast_need_numbers);
+            return;
+        }
+        if (markedWrong) {
+            toast(R.string.toast_already);
+            return;
+        }
+        String key = WrongBook.keyForShape(Shapes.indexOf(rowsA, innerK, colsB));
+        boolean added = WrongBook.add(this, key, new WrongBook.Item(
+                rowsA, innerK, colsB, flatten(valuesA), flatten(valuesB), false));
+        markedWrong = true;
+        toast(added ? R.string.toast_marked : R.string.toast_already);
+    }
+
+    private void toast(int resId) {
+        Toast.makeText(this, resId, Toast.LENGTH_SHORT).show();
     }
 
     /** Matrix product: A(m x k) . B(k x n) = C(m x n). */
@@ -294,7 +449,8 @@ public class MatMulActivity extends Activity {
         outState.putInt(STATE_K, innerK);
         outState.putInt(STATE_N, colsB);
         outState.putBoolean(STATE_HAS_NUMBERS, hasNumbers);
-        outState.putBoolean(STATE_ANSWER_SHOWN, hasNumbers && anyCellFilled(cellsC));
+        outState.putInt(STATE_REVEALED, revealCount);
+        outState.putBoolean(STATE_RECORDED, roundRecorded);
         outState.putLong(STATE_ELAPSED, timer.elapsed());
         outState.putBoolean(STATE_RUNNING, timer.isRunning());
         if (hasNumbers) {
@@ -314,10 +470,22 @@ public class MatMulActivity extends Activity {
         if (hasNumbers) {
             fillFromFlat(valuesA, cellsA, inState.getIntArray(STATE_A));
             fillFromFlat(valuesB, cellsB, inState.getIntArray(STATE_B));
-            if (inState.getBoolean(STATE_ANSWER_SHOWN, false)) {
-                showProduct();
+            int revealed = inState.getInt(STATE_REVEALED, 0);
+            if (revealed > 0) {
+                product = multiply(valuesA, valuesB);
+                for (int i = 0; i < revealed && i < totalResults(); i++) {
+                    int r = i / colsB;
+                    int c = i % colsB;
+                    cellsC[r][c].setText(String.valueOf(product[r][c]));
+                }
+                revealCount = Math.min(revealed, totalResults());
+                if (revealCount < totalResults()) {
+                    answerHint.setText(getString(R.string.reveal_progress,
+                            revealCount, totalResults()));
+                }
             }
         }
+        roundRecorded = inState.getBoolean(STATE_RECORDED, false);
 
         long elapsed = inState.getLong(STATE_ELAPSED, 0L);
         if (inState.getBoolean(STATE_RUNNING, false) && hasNumbers) {
@@ -325,20 +493,6 @@ public class MatMulActivity extends Activity {
         } else {
             timer.setElapsed(elapsed);
         }
-    }
-
-    private static boolean anyCellFilled(TextView[][] cells) {
-        if (cells == null) {
-            return false;
-        }
-        for (TextView[] row : cells) {
-            for (TextView tv : row) {
-                if (tv != null && tv.getText().length() > 0) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static int[] flatten(int[][] values) {

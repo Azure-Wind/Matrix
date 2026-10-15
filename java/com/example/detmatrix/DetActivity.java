@@ -1,14 +1,19 @@
 package com.example.detmatrix;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.Random;
 
-/** Mode one: determinant of a 3x3 matrix. */
+/**
+ * Mode one: determinant of a 3x3 matrix. Also used as the timed redo screen
+ * when a problem is opened from the wrong-answer book.
+ */
 public class DetActivity extends Activity {
 
     /** Matrix is 3x3. */
@@ -29,6 +34,7 @@ public class DetActivity extends Activity {
     private static final String STATE_ELAPSED = "elapsed";
     private static final String STATE_RUNNING = "running";
     private static final String STATE_ANSWER = "answer";
+    private static final String STATE_RECORDED = "recorded";
 
     private final TextView[][] cells = new TextView[SIZE][SIZE];
     private final int[][] values = new int[SIZE][SIZE];
@@ -36,11 +42,21 @@ public class DetActivity extends Activity {
 
     private TextView timerView;
     private TextView answerView;
+    private TextView practiceNote;
     private String answerText = "";
 
     private boolean hasNumbers;
     /** Timer was paused because the app went to the background. */
     private boolean resumeTimerOnStart;
+    /** This round's time has already been recorded, so it is not counted twice. */
+    private boolean roundRecorded;
+    /** This round has already been added to the wrong-answer book. */
+    private boolean markedWrong;
+
+    /** Redo mode entered from the wrong-answer book. */
+    private boolean practiceMode;
+    private String wrongKey;
+    private int wrongIndex;
 
     private final ElapsedTimer timer = new ElapsedTimer(new ElapsedTimer.Listener() {
         @Override
@@ -54,8 +70,13 @@ public class DetActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_det);
 
+        practiceMode = getIntent().getBooleanExtra(Practice.EXTRA_PRACTICE, false);
+        wrongKey = getIntent().getStringExtra(Practice.EXTRA_WRONG_KEY);
+        wrongIndex = getIntent().getIntExtra(Practice.EXTRA_WRONG_INDEX, -1);
+
         timerView = (TextView) findViewById(R.id.timer);
         answerView = (TextView) findViewById(R.id.answer);
+        practiceNote = (TextView) findViewById(R.id.practice_note);
 
         for (int r = 0; r < SIZE; r++) {
             for (int c = 0; c < SIZE; c++) {
@@ -82,13 +103,66 @@ public class DetActivity extends Activity {
                 onShowAnswer();
             }
         });
+        ((Button) findViewById(R.id.mark_wrong)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onMarkWrong();
+            }
+        });
+        findViewById(R.id.wrong_book).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(DetActivity.this, WrongListActivity.class)
+                        .putExtra(WrongListActivity.EXTRA_IS_DET, true));
+            }
+        });
+        findViewById(R.id.stats).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(DetActivity.this, StatsActivity.class)
+                        .putExtra(StatsActivity.EXTRA_MODE, StatsStore.MODE_DET));
+            }
+        });
+
+        if (practiceMode) {
+            applyPracticeUi();
+        }
 
         if (savedInstanceState != null) {
             restoreState(savedInstanceState);
+        } else if (practiceMode) {
+            loadPracticeValues();
         } else {
             updateTimerLabel(0L);
             setAnswer(getString(R.string.answer_placeholder));
         }
+    }
+
+    /** Redo mode: change the title and hide the controls that make no sense here. */
+    private void applyPracticeUi() {
+        ((TextView) findViewById(R.id.screen_title)).setText(R.string.practice_hint);
+        findViewById(R.id.next).setVisibility(View.GONE);
+        findViewById(R.id.mark_wrong).setVisibility(View.GONE);
+        findViewById(R.id.wrong_book).setVisibility(View.GONE);
+        findViewById(R.id.stats).setVisibility(View.GONE);
+    }
+
+    /** Redo mode: fill the grid with the saved problem and start the clock. */
+    private void loadPracticeValues() {
+        int[] flat = getIntent().getIntArrayExtra(Practice.EXTRA_VALUES_A);
+        if (flat == null || flat.length != SIZE * SIZE) {
+            finish();
+            return;
+        }
+        for (int r = 0; r < SIZE; r++) {
+            for (int c = 0; c < SIZE; c++) {
+                values[r][c] = flat[r * SIZE + c];
+                cells[r][c].setText(String.valueOf(values[r][c]));
+            }
+        }
+        hasNumbers = true;
+        setAnswer("");
+        timer.start();
     }
 
     /** "Next": clear the old numbers, draw new ones, reset and start the timer. */
@@ -103,11 +177,17 @@ public class DetActivity extends Activity {
             }
         }
         hasNumbers = true;
+        roundRecorded = false;
+        markedWrong = false;
+        practiceNote.setVisibility(View.GONE);
         setAnswer("");
         timer.start();
     }
 
-    /** "Show answer": stop the clock and show the determinant. */
+    /**
+     * "Show answer": stop the clock and show the determinant. In normal mode the
+     * time is recorded once per round; in redo mode the problem is marked done.
+     */
     private void onShowAnswer() {
         if (!hasNumbers) {
             setAnswer(getString(R.string.need_numbers));
@@ -115,6 +195,43 @@ public class DetActivity extends Activity {
         }
         timer.stop();
         setAnswer(getString(R.string.answer_format, determinant(values)));
+
+        if (practiceMode) {
+            if (wrongKey != null) {
+                WrongBook.markDone(this, wrongKey, wrongIndex);
+            }
+            practiceNote.setText(R.string.practice_done);
+            practiceNote.setVisibility(View.VISIBLE);
+        } else if (!roundRecorded) {
+            roundRecorded = true;
+            StatsStore.record(this, StatsStore.MODE_DET, timer.elapsed());
+        }
+    }
+
+    /** "Wrong": add the current problem to the determinant wrong-answer book. */
+    private void onMarkWrong() {
+        if (!hasNumbers) {
+            toast(R.string.toast_need_numbers);
+            return;
+        }
+        if (markedWrong) {
+            toast(R.string.toast_already);
+            return;
+        }
+        int[] flat = new int[SIZE * SIZE];
+        for (int r = 0; r < SIZE; r++) {
+            for (int c = 0; c < SIZE; c++) {
+                flat[r * SIZE + c] = values[r][c];
+            }
+        }
+        boolean added = WrongBook.add(this, WrongBook.KEY_DET,
+                new WrongBook.Item(SIZE, SIZE, SIZE, flat, new int[0], false));
+        markedWrong = true;
+        toast(added ? R.string.toast_marked : R.string.toast_already);
+    }
+
+    private void toast(int resId) {
+        Toast.makeText(this, resId, Toast.LENGTH_SHORT).show();
     }
 
     /** 3x3 determinant: a(ei-fh) - b(di-fg) + c(dh-eg), exact integer arithmetic. */
@@ -177,6 +294,7 @@ public class DetActivity extends Activity {
             outState.putIntArray(STATE_VALUES, flat);
         }
         outState.putBoolean(STATE_HAS_NUMBERS, hasNumbers);
+        outState.putBoolean(STATE_RECORDED, roundRecorded);
         outState.putLong(STATE_ELAPSED, timer.elapsed());
         outState.putBoolean(STATE_RUNNING, timer.isRunning());
         outState.putString(STATE_ANSWER, answerText);
@@ -184,6 +302,7 @@ public class DetActivity extends Activity {
 
     private void restoreState(Bundle inState) {
         hasNumbers = inState.getBoolean(STATE_HAS_NUMBERS, false);
+        roundRecorded = inState.getBoolean(STATE_RECORDED, false);
         int[] flat = inState.getIntArray(STATE_VALUES);
         if (hasNumbers && flat != null && flat.length == SIZE * SIZE) {
             for (int r = 0; r < SIZE; r++) {

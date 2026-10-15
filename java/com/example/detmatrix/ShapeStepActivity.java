@@ -28,10 +28,10 @@ public class ShapeStepActivity extends Activity {
     static final String EXTRA_K = "k";
     static final String EXTRA_N = "n";
 
-    /** Allowed values for rows of A / columns of B. */
-    static final int[] OPTIONS_SIZE = {2, 3, 4};
+    /** Allowed values for rows of A / columns of B (same source as Shapes.OPTIONS). */
+    static final int[] OPTIONS_SIZE = Shapes.OPTIONS;
     /** Allowed values for columns of A = rows of B. */
-    static final int[] OPTIONS_INNER = {2, 3, 4};
+    static final int[] OPTIONS_INNER = Shapes.OPTIONS;
 
     private static final String STATE_SELECTED = "selected";
 

@@ -19,6 +19,12 @@
     <color name="chip_text">#FF2A3547</color>
     <color name="chip_text_selected">#FFFFFFFF</color>
 
+    <!-- Wrong-answer book / statistics -->
+    <color name="danger">#FFC9453F</color>
+    <color name="done_green">#FF0B8A4B</color>
+    <color name="done_green_border">#FF086B3A</color>
+    <color name="pill_text">#FF2A3547</color>
+
     <color name="icon_bg">#FF2F6FED</color>
     <color name="icon_fg">#FFFFFFFF</color>
     <!-- Soft halo so text stays readable where the artwork is darker. -->

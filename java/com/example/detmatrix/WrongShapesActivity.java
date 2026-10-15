@@ -1,0 +1,85 @@
+package com.example.detmatrix;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Typeface;
+import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
+
+/** Entry point of the matrix-multiplication wrong book: 9 rows x 3 columns = 27 size buttons. */
+public class WrongShapesActivity extends Activity {
+
+    private static final int COLS = 3;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_wrong_shapes);
+
+        findViewById(R.id.back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+
+        LinearLayout grid = (LinearLayout) findViewById(R.id.shape_grid);
+        grid.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout row = null;
+        for (int i = 0; i < Shapes.COUNT; i++) {
+            if (i % COLS == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+                grid.addView(row);
+            }
+            row.addView(makeShapeButton(i));
+        }
+    }
+
+    private Button makeShapeButton(final int index) {
+        Button b = new Button(this);
+        b.setText(Shapes.label(index));
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        b.setTypeface(null, Typeface.BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setAllCaps(false);
+        b.setBackgroundResource(R.drawable.cell_bg_small);
+        b.setTextColor(getResources().getColor(R.color.number));
+        // Buttons carry a default minimum size; clear it so 0dp+weight works.
+        b.setMinWidth(0);
+        b.setMinimumWidth(0);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(2f), 0, dp(2f), 0);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                0, dp(52f), 1f);
+        lp.setMargins(dp(4f), dp(4f), dp(4f), dp(4f));
+        b.setLayoutParams(lp);
+
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent next = new Intent(WrongShapesActivity.this, WrongListActivity.class);
+                next.putExtra(WrongListActivity.EXTRA_IS_DET, false);
+                next.putExtra(WrongListActivity.EXTRA_SHAPE, index);
+                startActivity(next);
+            }
+        });
+        return b;
+    }
+
+    private int dp(float value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+}

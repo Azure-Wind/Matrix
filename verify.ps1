@@ -5,8 +5,6 @@ $JDK  = "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"
 $SDK  = "D:\android-sdk"
 $BT   = "$SDK\build-tools\34.0.0"
 $AJAR = "$SDK\platforms\android-34\android.jar"
-# Project dir = the folder this script lives in (keep these scripts ASCII-only:
-# PowerShell 5.1 decodes BOM-less UTF-8 as ANSI and non-ASCII bytes corrupt parsing).
 $PROJ = $PSScriptRoot
 $APK  = "$PROJ\Matrix.apk"
 $fails = 0
@@ -34,7 +32,8 @@ if ($mf -notmatch 'package="com\.example\.detmatrix"') {
     Write-Host "  PROBLEM: unexpected package name" -ForegroundColor Red; $fails++
 }
 # aapt2 keeps the source-relative form (".DetActivity"); the package attr resolves it.
-foreach ($act in @(".MainActivity", ".DetActivity", ".ShapeStepActivity", ".MatMulActivity")) {
+foreach ($act in @(".MainActivity", ".DetActivity", ".ShapeStepActivity", ".MatMulActivity",
+                   ".StatsActivity", ".WrongShapesActivity", ".WrongListActivity")) {
     $pat = 'android:name\(0x01010003\)="' + [regex]::Escape($act) + '"'
     $c = ([regex]::Matches($mf, $pat)).Count
     if ($c -eq 1) { Write-Host "  declared: $act" }
@@ -51,15 +50,25 @@ foreach ($m in [regex]::Matches($idBlock, 'int\s+(\w+)\s*=\s*(0x[0-9a-fA-F]+)'))
 
 $layouts = @{
     "res/layout/activity_main.xml"       = @("mode_det", "mode_matmul")
-    "res/layout/activity_det.xml"        = @("back", "timer", "cell00", "cell01", "cell02",
+    "res/layout/activity_det.xml"        = @("back", "screen_title", "timer",
+                                             "cell00", "cell01", "cell02",
                                              "cell10", "cell11", "cell12",
                                              "cell20", "cell21", "cell22",
-                                             "answer", "next", "show_answer")
-    "res/layout/activity_matmul.xml"     = @("back", "shape_label", "timer", "row_ab",
-                                             "matrix_c", "answer_hint",
-                                             "next", "show_answer")
+                                             "answer", "practice_note",
+                                             "next", "show_answer", "mark_wrong",
+                                             "wrong_book", "stats")
+    "res/layout/activity_matmul.xml"     = @("back", "screen_title", "shape_label", "timer",
+                                             "row_ab", "matrix_c", "answer_hint",
+                                             "practice_note", "next", "show_answer",
+                                             "mark_wrong", "wrong_book", "stats")
     "res/layout/activity_shape_step.xml" = @("back", "step_indicator", "step_title",
                                              "step_hint", "chip_row", "chosen", "confirm")
+    "res/layout/activity_stats.xml"      = @("back", "mode_name", "empty_note", "stats_body",
+                                             "avg_title", "avg_value", "total_value",
+                                             "recent_title", "recent_list")
+    "res/layout/activity_wrong_shapes.xml" = @("back", "shape_grid")
+    "res/layout/activity_wrong_list.xml"   = @("back", "list_title", "list_subtitle",
+                                               "empty_note", "number_grid", "tap_hint")
 }
 
 $allSeen = New-Object System.Collections.Generic.HashSet[string]
@@ -80,7 +89,7 @@ foreach ($layout in $layouts.Keys) {
         $problem++
     }
     if ($problem -eq 0) {
-        Write-Host ("  {0,-36} {1,2} ids OK" -f $layout, $layouts[$layout].Count)
+        Write-Host ("  {0,-34} {1,2} ids OK" -f $layout, $layouts[$layout].Count)
     } else { $fails++ }
 }
 $orphan = $idMap.Keys | Where-Object { -not $allSeen.Contains($_) }

@@ -198,6 +198,46 @@ public class MathTest {
             check(false, "shape space  missing=" + missing + " extra=" + extra);
         }
 
+        // ---- the Shapes index table must line up with the wizard's options ----
+        Class<?> shapesCls = Class.forName("com.example.detmatrix.Shapes");
+        Field countField = shapesCls.getDeclaredField("COUNT");
+        countField.setAccessible(true);
+        int shapeCount = countField.getInt(null);
+        Field allField = shapesCls.getDeclaredField("ALL");
+        allField.setAccessible(true);
+        int[][] all = (int[][]) allField.get(null);
+        Method indexOf = shapesCls.getDeclaredMethod("indexOf", int.class, int.class, int.class);
+        indexOf.setAccessible(true);
+        Method label = shapesCls.getDeclaredMethod("label", int.class);
+        label.setAccessible(true);
+
+        check(shapeCount == 27, "Shapes.COUNT = " + shapeCount);
+        check(all.length == 27, "Shapes.ALL length = " + all.length);
+
+        Set<String> covered = new TreeSet<String>();
+        for (int k : inners) {
+            for (int m : sizes) {
+                for (int n : sizes) {
+                    int idx = (Integer) indexOf.invoke(null, m, k, n);
+                    if (idx < 0 || idx >= all.length) {
+                        check(false, "indexOf(" + m + "," + k + "," + n + ") = " + idx);
+                        continue;
+                    }
+                    int[] s = all[idx];
+                    if (s[0] != m || s[1] != k || s[2] != n) {
+                        check(false, "Shapes.ALL[" + idx + "] = " + Arrays.toString(s)
+                                + " expected {" + m + "," + k + "," + n + "}");
+                    }
+                    covered.add(idx + ":" + label.invoke(null, idx));
+                }
+            }
+        }
+        check(covered.size() == 27, "Shapes indices covered = " + covered.size());
+        System.out.println("  Shapes index table: " + covered.size()
+                + " indices, 0..26 all map back to their own (m,k,n)");
+        System.out.println("  sample labels: " + label.invoke(null, 0) + "  "
+                + label.invoke(null, 13) + "  " + label.invoke(null, 26));
+
         // the 13 shapes originally requested must all still be reachable
         Set<String> original13 = new TreeSet<String>(Arrays.asList(
                 "2x2/2x2", "2x2/2x3", "2x2/2x4",

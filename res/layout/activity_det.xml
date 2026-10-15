@@ -25,9 +25,10 @@
             android:paddingLeft="18dp"
             android:paddingTop="60dp"
             android:paddingRight="18dp"
-            android:paddingBottom="18dp">
+            android:paddingBottom="76dp">
 
             <TextView
+                android:id="@+id/screen_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:shadowColor="@color/text_glow"
@@ -55,20 +56,20 @@
                 android:id="@+id/timer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="8dp"
                 android:fontFamily="monospace"
                 android:shadowColor="@color/text_glow"
                 android:shadowDx="0"
                 android:shadowDy="1"
                 android:shadowRadius="8"
                 android:textColor="@color/timer"
-                android:textSize="40sp"
+                android:textSize="26sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="12dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -151,9 +152,9 @@
                 android:id="@+id/answer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:gravity="center"
-                android:minHeight="62dp"
+                android:minHeight="54dp"
                 android:shadowColor="@color/text_glow"
                 android:shadowDx="0"
                 android:shadowDy="1"
@@ -161,6 +162,21 @@
                 android:textColor="@color/answer"
                 android:textSize="20sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/practice_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:shadowColor="@color/text_glow"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="6"
+                android:textColor="@color/answer"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -171,7 +187,7 @@
                 <Button
                     android:id="@+id/next"
                     android:layout_width="0dp"
-                    android:layout_height="54dp"
+                    android:layout_height="52dp"
                     android:layout_weight="1"
                     android:background="@drawable/btn_primary"
                     android:text="@string/next"
@@ -183,7 +199,7 @@
                 <Button
                     android:id="@+id/show_answer"
                     android:layout_width="0dp"
-                    android:layout_height="54dp"
+                    android:layout_height="52dp"
                     android:layout_marginStart="10dp"
                     android:layout_weight="1"
                     android:background="@drawable/btn_secondary"
@@ -193,6 +209,18 @@
                     android:textSize="17sp"
                     android:textStyle="bold" />
             </LinearLayout>
+
+            <Button
+                android:id="@+id/mark_wrong"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/btn_danger"
+                android:text="@string/btn_mark_wrong"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
         </LinearLayout>
     </ScrollView>
@@ -207,4 +235,50 @@
         android:contentDescription="@string/back"
         android:padding="9dp"
         android:src="@drawable/ic_arrow_back" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:paddingLeft="12dp"
+        android:paddingTop="6dp"
+        android:paddingRight="12dp"
+        android:paddingBottom="10dp">
+
+        <Button
+            android:id="@+id/wrong_book"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:background="@drawable/pill_button"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp"
+            android:text="@string/btn_wrong_book"
+            android:textAllCaps="false"
+            android:textColor="@color/pill_text"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/stats"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:background="@drawable/pill_button"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp"
+            android:text="@string/btn_stats"
+            android:textAllCaps="false"
+            android:textColor="@color/pill_text"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 </FrameLayout>
