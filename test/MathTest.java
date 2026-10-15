@@ -12,7 +12,7 @@ import java.util.TreeSet;
  *
  * The product is cross-checked against an independent formulation, and the
  * selectable shape space is pinned against an explicit list so an accidental
- * change to the screen's option arrays is caught.
+ * change to the wizard's option arrays is caught.
  */
 public class MathTest {
 
@@ -150,6 +150,10 @@ public class MathTest {
                         new int[][]{{0, 0}, {0, 0}}},
                 {new int[][]{{-1, 2}, {3, -4}}, new int[][]{{-5, -6}, {-7, -8}},
                         new int[][]{{-9, -10}, {13, 14}}},
+                // 4x3 * 3x4 -> 4x4 (only reachable now that k=3 allows size 4)
+                {new int[][]{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11, 12}},
+                        new int[][]{{1, 0, 0, 1}, {0, 1, 0, 1}, {0, 0, 1, 1}},
+                        new int[][]{{1, 2, 3, 6}, {4, 5, 6, 15}, {7, 8, 9, 24}, {10, 11, 12, 33}}},
         };
         for (int ci = 0; ci < cases.length; ci++) {
             int[][] got = (int[][]) mul.invoke(null, cases[ci][0], cases[ci][1]);
@@ -159,29 +163,30 @@ public class MathTest {
         }
         System.out.println("  known products: " + cases.length + " checked");
 
-        // ---- shape space, read from the screen's own option arrays ----
-        int[] inner = staticIntArray(cls, "INNER_OPTIONS");
-        int[] wide = staticIntArray(cls, "SIZE_OPTIONS_WIDE");
-        int[] narrow = staticIntArray(cls, "SIZE_OPTIONS_NARROW");
-        System.out.println("  screen options: inner=" + Arrays.toString(inner)
-                + " wide=" + Arrays.toString(wide) + " narrow=" + Arrays.toString(narrow));
+        // ---- shape space, read from the wizard's own option arrays ----
+        Class<?> stepCls = Class.forName("com.example.detmatrix.ShapeStepActivity");
+        int[] sizes = staticIntArray(stepCls, "OPTIONS_SIZE");
+        int[] inners = staticIntArray(stepCls, "OPTIONS_INNER");
+        System.out.println("  wizard options: size=" + Arrays.toString(sizes)
+                + " inner=" + Arrays.toString(inners));
 
         Set<String> produced = new TreeSet<String>();
-        for (int k : inner) {
-            int[] opts = (k == 3) ? narrow : wide;
-            for (int m : opts) {
-                for (int n : opts) {
+        for (int k : inners) {
+            for (int m : sizes) {
+                for (int n : sizes) {
                     produced.add(m + "x" + k + "/" + k + "x" + n);
                 }
             }
         }
+        // 3 x 2 x 3 = 18 combinations (k is limited to 2 or 3 here)
         Set<String> required = new TreeSet<String>(Arrays.asList(
                 "2x2/2x2", "2x2/2x3", "2x2/2x4",
                 "3x2/2x2", "3x2/2x3", "3x2/2x4",
                 "4x2/2x2", "4x2/2x3", "4x2/2x4",
-                "2x3/3x2", "2x3/3x3",
-                "3x3/3x2", "3x3/3x3"));
-        System.out.println("  selectable shapes: " + produced.size() + " (expected 13)");
+                "2x3/3x2", "2x3/3x3", "2x3/3x4",
+                "3x3/3x2", "3x3/3x3", "3x3/3x4",
+                "4x3/3x2", "4x3/3x3", "4x3/3x4"));
+        System.out.println("  selectable shapes: " + produced.size() + " (expected 18)");
         if (!produced.equals(required)) {
             Set<String> missing = new TreeSet<String>(required);
             missing.removeAll(produced);
@@ -195,10 +200,11 @@ public class MathTest {
         int perShape = 4000;
         long checks = 0;
         int maxAbs = 0;
-        for (int k : inner) {
-            int[] opts = (k == 3) ? narrow : wide;
-            for (int m : opts) {
-                for (int n : opts) {
+        int widestCols = 0;
+        for (int k : inners) {
+            for (int m : sizes) {
+                for (int n : sizes) {
+                    widestCols = Math.max(widestCols, k + n);
                     for (int t = 0; t < perShape; t++) {
                         int[][] a = new int[m][k];
                         int[][] b = new int[k][n];
@@ -223,6 +229,7 @@ public class MathTest {
             }
         }
         System.out.println("  random checks over all shapes: " + checks + "   max |c| = " + maxAbs);
+        System.out.println("  widest A+B row to lay out: " + widestCols + " cell columns");
 
         // ---- exhaustive 2x2 * 2x2 over [-2,2]^8 ----
         long combos = 0;

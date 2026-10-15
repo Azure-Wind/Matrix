@@ -26,7 +26,10 @@ public class MainActivity extends Activity {
         matMulButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, MatMulActivity.class));
+                // Go through the three-step size wizard first.
+                Intent wizard = new Intent(MainActivity.this, ShapeStepActivity.class);
+                wizard.putExtra(ShapeStepActivity.EXTRA_STEP, 1);
+                startActivity(wizard);
             }
         });
     }

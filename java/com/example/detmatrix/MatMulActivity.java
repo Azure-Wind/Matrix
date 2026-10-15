@@ -16,12 +16,9 @@ import java.util.Random;
 /**
  * Mode two: matrix multiplication.
  *
- * The size is picked with three in-page selectors:
- *   k = columns of A = rows of B (only 2 or 3)
- *   m = rows of A
- *   n = columns of B
+ * The size is chosen by the {@link ShapeStepActivity} wizard and passed in:
+ *   m = rows of A, k = columns of A = rows of B, n = columns of B
  * so A is m x k, B is k x n and the product C is m x n.
- * When k = 3, m and n are limited to 2 or 3.
  */
 public class MatMulActivity extends Activity {
 
@@ -29,16 +26,8 @@ public class MatMulActivity extends Activity {
     private static final int MIN_VALUE = -10;
     private static final int MAX_VALUE = 10;
 
-    private static final int[] INNER_OPTIONS = {2, 3};
-    private static final int[] SIZE_OPTIONS_WIDE = {2, 3, 4};
-    private static final int[] SIZE_OPTIONS_NARROW = {2, 3};
-
-    private static final int WHICH_K = 0;
-    private static final int WHICH_M = 1;
-    private static final int WHICH_N = 2;
-
-    private static final String STATE_K = "k";
     private static final String STATE_M = "m";
+    private static final String STATE_K = "k";
     private static final String STATE_N = "n";
     private static final String STATE_A = "a";
     private static final String STATE_B = "b";
@@ -49,15 +38,13 @@ public class MatMulActivity extends Activity {
 
     private final Random random = new Random();
 
-    private int innerK = 3;
     private int rowsA = 3;
+    private int innerK = 3;
     private int colsB = 3;
 
-    private LinearLayout rowK;
-    private LinearLayout rowM;
-    private LinearLayout rowN;
     private LinearLayout rowAb;
     private LinearLayout matrixC;
+    private TextView shapeLabel;
     private TextView timerView;
     private TextView answerHint;
 
@@ -84,11 +71,13 @@ public class MatMulActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_matmul);
 
+        rowsA = getIntent().getIntExtra(ShapeStepActivity.EXTRA_M, 3);
+        innerK = getIntent().getIntExtra(ShapeStepActivity.EXTRA_K, 3);
+        colsB = getIntent().getIntExtra(ShapeStepActivity.EXTRA_N, 3);
+
         timerView = (TextView) findViewById(R.id.timer);
         answerHint = (TextView) findViewById(R.id.answer_hint);
-        rowK = (LinearLayout) findViewById(R.id.row_k);
-        rowM = (LinearLayout) findViewById(R.id.row_m);
-        rowN = (LinearLayout) findViewById(R.id.row_n);
+        shapeLabel = (TextView) findViewById(R.id.shape_label);
         rowAb = (LinearLayout) findViewById(R.id.row_ab);
         matrixC = (LinearLayout) findViewById(R.id.matrix_c);
 
@@ -115,79 +104,16 @@ public class MatMulActivity extends Activity {
         if (savedInstanceState != null) {
             restoreState(savedInstanceState);
         } else {
-            refreshChips();
             rebuild();
         }
     }
 
-    // ------------------------------------------------------------- selectors
-
-    private void refreshChips() {
-        int[] sizeOptions = (innerK == 3) ? SIZE_OPTIONS_NARROW : SIZE_OPTIONS_WIDE;
-        fillChips(rowK, INNER_OPTIONS, innerK, WHICH_K);
-        fillChips(rowM, sizeOptions, rowsA, WHICH_M);
-        fillChips(rowN, sizeOptions, colsB, WHICH_N);
-    }
-
-    private void fillChips(LinearLayout container, int[] options, int selected, final int which) {
-        container.removeAllViews();
-        for (final int value : options) {
-            boolean isSelected = (value == selected);
-
-            TextView chip = new TextView(this);
-            chip.setText(String.valueOf(value));
-            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-            chip.setTypeface(null, Typeface.BOLD);
-            chip.setGravity(Gravity.CENTER);
-            chip.setBackgroundResource(isSelected
-                    ? R.drawable.chip_bg_selected : R.drawable.chip_bg);
-            chip.setTextColor(getResources().getColor(isSelected
-                    ? R.color.chip_text_selected : R.color.chip_text));
-
-            LinearLayout.LayoutParams lp =
-                    new LinearLayout.LayoutParams(dp(38f), dp(32f));
-            lp.setMargins(dp(3f), 0, dp(3f), 0);
-            chip.setLayoutParams(lp);
-
-            chip.setClickable(true);
-            chip.setFocusable(true);
-            chip.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    onSizeSelected(which, value);
-                }
-            });
-            container.addView(chip);
-        }
-    }
-
-    private void onSizeSelected(int which, int value) {
-        if (which == WHICH_K) {
-            innerK = value;
-            // With k = 3 the row/column counts can only be 2 or 3.
-            if (innerK == 3) {
-                if (rowsA > 3) {
-                    rowsA = 3;
-                }
-                if (colsB > 3) {
-                    colsB = 3;
-                }
-            }
-        } else if (which == WHICH_M) {
-            rowsA = value;
-        } else {
-            colsB = value;
-        }
-        refreshChips();
-        rebuild();
-    }
-
-    // ----------------------------------------------------------- grid layout
-
     /** Rebuild the A, B and C grids for the current size and clear this round. */
     private void rebuild() {
+        shapeLabel.setText(getString(R.string.shape_label, rowsA, innerK, innerK, colsB));
+
         int cell = cellSizePx();
-        float textSp = Math.max(11f,
+        float textSp = Math.max(10f,
                 cell / getResources().getDisplayMetrics().density * 0.34f);
 
         valuesA = new int[rowsA][innerK];
@@ -248,19 +174,19 @@ public class MatMulActivity extends Activity {
         }
     }
 
-    /** A (innerK columns) and B (colsB columns) side by side; at most 3+3 = 6 columns. */
+    /** A (innerK columns) and B (colsB columns) side by side; at most 4+4 = 8 columns. */
     private int cellSizePx() {
         DisplayMetrics dm = getResources().getDisplayMetrics();
         float widthDp = dm.widthPixels / dm.density;
-        // 14dp padding each side plus about 34dp for the "×".
-        float available = widthDp - 28f - 34f;
+        // 10dp padding each side plus about 28dp for the "×".
+        float available = widthDp - 20f - 28f;
         int totalCols = innerK + colsB;
         float cellDp = available / totalCols * 0.88f;
         if (cellDp > 54f) {
             cellDp = 54f;
         }
-        if (cellDp < 30f) {
-            cellDp = 30f;
+        if (cellDp < 26f) {
+            cellDp = 26f;
         }
         return Math.round(cellDp * dm.density);
     }
@@ -364,8 +290,8 @@ public class MatMulActivity extends Activity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putInt(STATE_K, innerK);
         outState.putInt(STATE_M, rowsA);
+        outState.putInt(STATE_K, innerK);
         outState.putInt(STATE_N, colsB);
         outState.putBoolean(STATE_HAS_NUMBERS, hasNumbers);
         outState.putBoolean(STATE_ANSWER_SHOWN, hasNumbers && anyCellFilled(cellsC));
@@ -378,11 +304,10 @@ public class MatMulActivity extends Activity {
     }
 
     private void restoreState(Bundle inState) {
-        innerK = inState.getInt(STATE_K, 3);
-        rowsA = inState.getInt(STATE_M, 3);
-        colsB = inState.getInt(STATE_N, 3);
+        rowsA = inState.getInt(STATE_M, rowsA);
+        innerK = inState.getInt(STATE_K, innerK);
+        colsB = inState.getInt(STATE_N, colsB);
 
-        refreshChips();
         rebuild();
 
         hasNumbers = inState.getBoolean(STATE_HAS_NUMBERS, false);

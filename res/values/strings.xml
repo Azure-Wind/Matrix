@@ -13,11 +13,19 @@
 
     <string name="matmul_title">矩阵相乘</string>
     <string name="matmul_hint">心算 A × B 的积矩阵</string>
+    <string name="shape_label">A %1$d×%2$d  ·  B %3$d×%4$d</string>
 
-    <!-- In-page size selectors -->
-    <string name="label_inner">A列=B行</string>
-    <string name="label_rows_a">A 的行数</string>
-    <string name="label_cols_b">B 的列数</string>
+    <!-- Size-selection wizard -->
+    <string name="step_indicator">第 %1$d / 3 步</string>
+    <string name="step1_title">A 的行数</string>
+    <string name="step1_hint">先决定 A 有几行</string>
+    <string name="step2_title">A 的列数 = B 的行数</string>
+    <string name="step2_hint">A 的列数必须等于 B 的行数</string>
+    <string name="step3_title">B 的列数</string>
+    <string name="step3_hint">再决定 B 有几列</string>
+    <string name="confirm">确认</string>
+    <string name="chosen_m">A 的行数 = %1$d</string>
+    <string name="chosen_mk">A 的行数 = %1$d　·　A列=B行 = %2$d</string>
 
     <string name="timer_format">%1$.1f 秒</string>
     <string name="next">下一个</string>

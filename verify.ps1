@@ -34,7 +34,7 @@ if ($mf -notmatch 'package="com\.example\.detmatrix"') {
     Write-Host "  PROBLEM: unexpected package name" -ForegroundColor Red; $fails++
 }
 # aapt2 keeps the source-relative form (".DetActivity"); the package attr resolves it.
-foreach ($act in @(".MainActivity", ".DetActivity", ".MatMulActivity")) {
+foreach ($act in @(".MainActivity", ".DetActivity", ".ShapeStepActivity", ".MatMulActivity")) {
     $pat = 'android:name\(0x01010003\)="' + [regex]::Escape($act) + '"'
     $c = ([regex]::Matches($mf, $pat)).Count
     if ($c -eq 1) { Write-Host "  declared: $act" }
@@ -50,14 +50,16 @@ foreach ($m in [regex]::Matches($idBlock, 'int\s+(\w+)\s*=\s*(0x[0-9a-fA-F]+)'))
 }
 
 $layouts = @{
-    "res/layout/activity_main.xml"   = @("mode_det", "mode_matmul")
-    "res/layout/activity_det.xml"    = @("back", "timer", "cell00", "cell01", "cell02",
-                                         "cell10", "cell11", "cell12",
-                                         "cell20", "cell21", "cell22",
-                                         "answer", "next", "show_answer")
-    "res/layout/activity_matmul.xml" = @("back", "timer", "row_k", "row_m", "row_n",
-                                         "row_ab", "matrix_c", "answer_hint",
-                                         "next", "show_answer")
+    "res/layout/activity_main.xml"       = @("mode_det", "mode_matmul")
+    "res/layout/activity_det.xml"        = @("back", "timer", "cell00", "cell01", "cell02",
+                                             "cell10", "cell11", "cell12",
+                                             "cell20", "cell21", "cell22",
+                                             "answer", "next", "show_answer")
+    "res/layout/activity_matmul.xml"     = @("back", "shape_label", "timer", "row_ab",
+                                             "matrix_c", "answer_hint",
+                                             "next", "show_answer")
+    "res/layout/activity_shape_step.xml" = @("back", "step_indicator", "step_title",
+                                             "step_hint", "chip_row", "chosen", "confirm")
 }
 
 $allSeen = New-Object System.Collections.Generic.HashSet[string]

@@ -26,6 +26,11 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".ShapeStepActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".MatMulActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
