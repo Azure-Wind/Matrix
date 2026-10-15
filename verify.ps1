@@ -1,4 +1,4 @@
-# Full verification suite for DetMatrix.apk
+# Full verification suite for Matrix.apk
 $ErrorActionPreference = "Continue"
 
 $JDK  = "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"
@@ -8,7 +8,7 @@ $AJAR = "$SDK\platforms\android-34\android.jar"
 # Project dir = the folder this script lives in (keep these scripts ASCII-only:
 # PowerShell 5.1 decodes BOM-less UTF-8 as ANSI and non-ASCII bytes corrupt parsing).
 $PROJ = $PSScriptRoot
-$APK  = "$PROJ\DetMatrix.apk"
+$APK  = "$PROJ\Matrix.apk"
 $fails = 0
 
 # apksigner.bat needs java on PATH or JAVA_HOME set

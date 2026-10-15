@@ -1,4 +1,4 @@
-# Builds DetMatrix.apk using the Android SDK build-tools directly
+# Builds Matrix.apk using the Android SDK build-tools directly
 # (aapt2 link -> javac -> d8 -> zipalign -> apksigner).
 # Native tools (keytool/d8/aapt2) legitimately write progress to stderr, which
 # PowerShell 5.1 would otherwise turn into a terminating error. So keep this at
@@ -74,7 +74,7 @@ if (-not (Test-Path $ks)) {
 }
 
 Write-Host "== 8. apksigner ==" -ForegroundColor Cyan
-$out = "$PROJ\DetMatrix.apk"
+$out = "$PROJ\Matrix.apk"
 if (Test-Path $out) { Remove-Item $out -Force }
 & "$BT\apksigner.bat" sign `
     --ks $ks --ks-pass pass:android --key-pass pass:android `

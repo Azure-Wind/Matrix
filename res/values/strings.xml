@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">三阶行列式速算</string>
+    <string name="app_name">线性代数小双基</string>
     <string name="home_subtitle">心算练习</string>
 
     <string name="mode_det_title">行列式计算</string>
