@@ -31,7 +31,7 @@ public class ShapeStepActivity extends Activity {
     /** Allowed values for rows of A / columns of B. */
     static final int[] OPTIONS_SIZE = {2, 3, 4};
     /** Allowed values for columns of A = rows of B. */
-    static final int[] OPTIONS_INNER = {2, 3};
+    static final int[] OPTIONS_INNER = {2, 3, 4};
 
     private static final String STATE_SELECTED = "selected";
 

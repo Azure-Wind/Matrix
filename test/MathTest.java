@@ -178,15 +178,18 @@ public class MathTest {
                 }
             }
         }
-        // 3 x 2 x 3 = 18 combinations (k is limited to 2 or 3 here)
+        // 3 x 3 x 3 = 27 combinations
         Set<String> required = new TreeSet<String>(Arrays.asList(
                 "2x2/2x2", "2x2/2x3", "2x2/2x4",
                 "3x2/2x2", "3x2/2x3", "3x2/2x4",
                 "4x2/2x2", "4x2/2x3", "4x2/2x4",
                 "2x3/3x2", "2x3/3x3", "2x3/3x4",
                 "3x3/3x2", "3x3/3x3", "3x3/3x4",
-                "4x3/3x2", "4x3/3x3", "4x3/3x4"));
-        System.out.println("  selectable shapes: " + produced.size() + " (expected 18)");
+                "4x3/3x2", "4x3/3x3", "4x3/3x4",
+                "2x4/4x2", "2x4/4x3", "2x4/4x4",
+                "3x4/4x2", "3x4/4x3", "3x4/4x4",
+                "4x4/4x2", "4x4/4x3", "4x4/4x4"));
+        System.out.println("  selectable shapes: " + produced.size() + " (expected 27)");
         if (!produced.equals(required)) {
             Set<String> missing = new TreeSet<String>(required);
             missing.removeAll(produced);
@@ -194,6 +197,15 @@ public class MathTest {
             extra.removeAll(required);
             check(false, "shape space  missing=" + missing + " extra=" + extra);
         }
+
+        // the 13 shapes originally requested must all still be reachable
+        Set<String> original13 = new TreeSet<String>(Arrays.asList(
+                "2x2/2x2", "2x2/2x3", "2x2/2x4",
+                "3x2/2x2", "3x2/2x3", "3x2/2x4",
+                "4x2/2x2", "4x2/2x3", "4x2/2x4",
+                "2x3/3x2", "2x3/3x3",
+                "3x3/3x2", "3x3/3x3"));
+        check(produced.containsAll(original13), "original 13 shapes no longer all reachable");
 
         // ---- every shape: random full-range comparison ----
         Random rnd = new Random(999);
