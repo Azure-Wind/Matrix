@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#FFF4F6FA</color>
+    <!-- Base colour the background artwork is faded onto. -->
+    <color name="window_bg">#FFFFFFFF</color>
+
     <color name="cell">#FFFFFFFF</color>
-    <color name="cell_border">#FFC3CCDA</color>
+    <color name="cell_border">#FFA9B8CC</color>
     <color name="number">#FF16202E</color>
     <color name="title">#FF16202E</color>
-    <color name="hint">#FF78849A</color>
+    <color name="hint">#FF64738A</color>
     <color name="timer">#FF2F6FED</color>
     <color name="answer">#FF0B8A4B</color>
     <color name="primary">#FF2F6FED</color>
     <color name="secondary">#FFE3E8F0</color>
     <color name="secondary_text">#FF2A3547</color>
+
     <color name="icon_bg">#FF2F6FED</color>
     <color name="icon_fg">#FFFFFFFF</color>
+    <!-- Soft halo so text stays readable where the artwork is darker. -->
+    <color name="text_glow">#D9FFFFFF</color>
 </resources>
