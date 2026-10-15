@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Visual attributes only. Cell sizing is declared explicitly in the
+         layout so it never depends on style-driven layout params. -->
+    <style name="Cell">
+        <item name="android:background">@drawable/cell_bg</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/number</item>
+        <item name="android:textSize">26sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>

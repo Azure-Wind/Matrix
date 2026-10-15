@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">三阶行列式速算</string>
+    <string name="hint_compute">心算下面 3×3 矩阵的行列式</string>
+    <string name="timer_format">%1$.1f 秒</string>
+    <string name="next">下一个</string>
+    <string name="show_answer">查看答案</string>
+    <string name="answer_placeholder">点击「查看答案」显示行列式的值</string>
+    <string name="answer_format">行列式的值 = %1$d</string>
+    <string name="need_numbers">请先点击「下一个」生成矩阵</string>
+</resources>
