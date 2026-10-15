@@ -33,15 +33,15 @@ $mf = (& "$BT\aapt2.exe" dump xmltree --file AndroidManifest.xml $APK 2>&1) -joi
 if ($mf -notmatch 'package="com\.example\.detmatrix"') {
     Write-Host "  PROBLEM: unexpected package name" -ForegroundColor Red; $fails++
 }
-# aapt2 keeps the source-relative form (".MainActivity"); the package attr resolves it.
-foreach ($act in @(".MainActivity")) {
+# aapt2 keeps the source-relative form (".DetActivity"); the package attr resolves it.
+foreach ($act in @(".MainActivity", ".DetActivity", ".MatMulActivity")) {
     $pat = 'android:name\(0x01010003\)="' + [regex]::Escape($act) + '"'
     $c = ([regex]::Matches($mf, $pat)).Count
     if ($c -eq 1) { Write-Host "  declared: $act" }
     else { Write-Host "  PROBLEM: $act declared $c times" -ForegroundColor Red; $fails++ }
 }
 
-Write-Host "`n===== 3. View ids in the layout =====" -ForegroundColor Cyan
+Write-Host "`n===== 3. View ids per layout =====" -ForegroundColor Cyan
 $rjava = Get-Content "$PROJ\build\gen\com\example\detmatrix\R.java" -Raw
 $idBlock = [regex]::Match($rjava, 'class id \{(.*?)\}', 'Singleline').Groups[1].Value
 $idMap = @{}
@@ -50,10 +50,14 @@ foreach ($m in [regex]::Matches($idBlock, 'int\s+(\w+)\s*=\s*(0x[0-9a-fA-F]+)'))
 }
 
 $layouts = @{
-    "res/layout/activity_main.xml" = @("timer", "cell00", "cell01", "cell02",
-                                       "cell10", "cell11", "cell12",
-                                       "cell20", "cell21", "cell22",
-                                       "answer", "next", "show_answer")
+    "res/layout/activity_main.xml"   = @("mode_det", "mode_matmul")
+    "res/layout/activity_det.xml"    = @("back", "timer", "cell00", "cell01", "cell02",
+                                         "cell10", "cell11", "cell12",
+                                         "cell20", "cell21", "cell22",
+                                         "answer", "next", "show_answer")
+    "res/layout/activity_matmul.xml" = @("back", "timer", "row_k", "row_m", "row_n",
+                                         "row_ab", "matrix_c", "answer_hint",
+                                         "next", "show_answer")
 }
 
 $allSeen = New-Object System.Collections.Generic.HashSet[string]
@@ -81,21 +85,37 @@ $orphan = $idMap.Keys | Where-Object { -not $allSeen.Contains($_) }
 if ($orphan) { Write-Host "  orphan ids declared but unused: $orphan" -ForegroundColor Red; $fails++ }
 else { Write-Host "  every declared id is used by exactly one layout: OK" }
 
-Write-Host "`n===== 4. Cell sizing (explicit in layout) =====" -ForegroundColor Cyan
-$tree = ((& "$BT\aapt2.exe" dump xmltree --file res/layout/activity_main.xml $APK 2>&1) -join "`n")
-$w78 = ([regex]::Matches($tree, 'layout_width\(0x010100f4\)=78\.000000dp')).Count
-$h78 = ([regex]::Matches($tree, 'layout_height\(0x010100f5\)=78\.000000dp')).Count
+Write-Host "`n===== 4. Determinant cell sizing (explicit in layout) =====" -ForegroundColor Cyan
+$detTree = ((& "$BT\aapt2.exe" dump xmltree --file res/layout/activity_det.xml $APK 2>&1) -join "`n")
+$w78 = ([regex]::Matches($detTree, 'layout_width\(0x010100f4\)=78\.000000dp')).Count
+$h78 = ([regex]::Matches($detTree, 'layout_height\(0x010100f5\)=78\.000000dp')).Count
 Write-Host "  cells with explicit 78dp width : $w78 (expect 9)"
 Write-Host "  cells with explicit 78dp height: $h78 (expect 9)"
 if ($w78 -ne 9 -or $h78 -ne 9) { $fails++ }
 
-Write-Host "`n===== 5. Maths (real APK bytecode) =====" -ForegroundColor Cyan
+Write-Host "`n===== 5. Adaptive launcher icon =====" -ForegroundColor Cyan
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::OpenRead($APK)
+$names = $zip.Entries | ForEach-Object { $_.FullName }
+$zip.Dispose()
+foreach ($need in @("res/mipmap-anydpi-v26/ic_launcher.xml",
+                    "res/mipmap-xxxhdpi-v4/ic_launcher.png",
+                    "res/mipmap-xxxhdpi-v4/ic_launcher_foreground.png",
+                    "res/drawable/ic_launcher_background.xml")) {
+    if ($names -contains $need) { Write-Host "  present: $need" }
+    else { Write-Host "  MISSING: $need" -ForegroundColor Red; $fails++ }
+}
+foreach ($legacy in @("res/drawable/ic_launcher.xml")) {
+    if ($names -contains $legacy) { Write-Host "  old grid icon still present: $legacy" -ForegroundColor Red; $fails++ }
+}
+
+Write-Host "`n===== 6. Maths (real APK bytecode) =====" -ForegroundColor Cyan
 $testOut = "$PROJ\build\testout"
 Remove-Item $testOut -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $testOut | Out-Null
 $cp = "$AJAR;$PROJ\build\classes"
-& "$JDK\bin\javac.exe" -encoding UTF-8 -nowarn -cp $cp -d $testOut "$PROJ\test\DetTest.java" 2>&1 | Out-Null
-& "$JDK\bin\java.exe" -cp "$AJAR;$PROJ\build\classes;$testOut" DetTest
+& "$JDK\bin\javac.exe" -encoding UTF-8 -nowarn -cp $cp -d $testOut "$PROJ\test\MathTest.java" 2>&1 | Out-Null
+& "$JDK\bin\java.exe" -cp "$AJAR;$PROJ\build\classes;$testOut" MathTest
 if ($LASTEXITCODE -ne 0) { $fails++ }
 
 Write-Host ""

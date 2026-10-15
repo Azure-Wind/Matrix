@@ -45,7 +45,7 @@ Write-Host "== 2. aapt2 link (base apk + R.java) ==" -ForegroundColor Cyan
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 Write-Host "== 3. javac ==" -ForegroundColor Cyan
-$sources = @("$PROJ\java\com\example\detmatrix\MainActivity.java")
+$sources = @(Get-ChildItem "$PROJ\java" -Recurse -Filter *.java | ForEach-Object { $_.FullName })
 $sources += (Get-ChildItem "$BUILD\gen" -Recurse -Filter *.java | ForEach-Object { $_.FullName })
 & $javac -encoding UTF-8 -source 8 -target 8 -nowarn `
     -bootclasspath $AJAR -d "$BUILD\classes" $sources

@@ -1,0 +1,258 @@
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
+
+/**
+ * Verifies the maths routines that are actually compiled into the APK:
+ *   com.example.detmatrix.DetActivity#determinant    (3x3 determinant)
+ *   com.example.detmatrix.MatMulActivity#multiply    (matrix product)
+ *
+ * The product is cross-checked against an independent formulation, and the
+ * selectable shape space is pinned against an explicit list so an accidental
+ * change to the screen's option arrays is caught.
+ */
+public class MathTest {
+
+    static int failures = 0;
+
+    // ------------------------------------------------------------ references
+
+    /** Independent determinant: full 3! permutation (Leibniz) expansion. */
+    static int referenceDet(int[][] m) {
+        int[][] perms = {
+                {0, 1, 2}, {0, 2, 1}, {1, 0, 2},
+                {1, 2, 0}, {2, 0, 1}, {2, 1, 0}
+        };
+        int sum = 0;
+        for (int[] q : perms) {
+            int prod = m[0][q[0]] * m[1][q[1]] * m[2][q[2]];
+            int inversions = 0;
+            for (int i = 0; i < 3; i++) {
+                for (int j = i + 1; j < 3; j++) {
+                    if (q[i] > q[j]) inversions++;
+                }
+            }
+            sum += ((inversions % 2 == 0) ? 1 : -1) * prod;
+        }
+        return sum;
+    }
+
+    /**
+     * Independent product: accumulate rank-1 outer products.
+     * Different loop order / formulation from the shipped dot-product version.
+     */
+    static int[][] referenceMultiply(int[][] a, int[][] b) {
+        int m = a.length, k = a[0].length, n = b[0].length;
+        int[][] c = new int[m][n];
+        for (int t = 0; t < k; t++) {
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
+                    c[i][j] += a[i][t] * b[t][j];
+                }
+            }
+        }
+        return c;
+    }
+
+    static int[] staticIntArray(Class<?> cls, String name) throws Exception {
+        Field f = cls.getDeclaredField(name);
+        f.setAccessible(true);
+        return (int[]) f.get(null);
+    }
+
+    static void check(boolean ok, String message) {
+        if (!ok) {
+            failures++;
+            System.out.println("  FAIL " + message);
+        }
+    }
+
+    // ---------------------------------------------------------------- tests
+
+    static void testDeterminant() throws Exception {
+        System.out.println("--- 3x3 determinant ---");
+        Class<?> cls = Class.forName("com.example.detmatrix.DetActivity");
+        Method det = cls.getDeclaredMethod("determinant", int[][].class);
+        det.setAccessible(true);
+
+        int[][][] known = {
+                {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+                {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
+                {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}},
+                {{2, 0, 0}, {0, 3, 0}, {0, 0, 4}},
+                {{6, 1, 1}, {4, -2, 5}, {2, 8, 7}},
+                {{-10, 10, -10}, {10, -10, 10}, {-10, 10, -10}},
+        };
+        int[] expected = {0, 1, 0, 24, -306, 0};
+        for (int i = 0; i < known.length; i++) {
+            int got = (Integer) det.invoke(null, (Object) known[i]);
+            check(got == expected[i], "known[" + i + "] expected=" + expected[i] + " got=" + got);
+        }
+        System.out.println("  known matrices: " + known.length + " checked");
+
+        int[] v = new int[9];
+        int[][] m = new int[3][3];
+        long combos = 0;
+        for (v[0] = -2; v[0] <= 2; v[0]++)
+        for (v[1] = -2; v[1] <= 2; v[1]++)
+        for (v[2] = -2; v[2] <= 2; v[2]++)
+        for (v[3] = -2; v[3] <= 2; v[3]++)
+        for (v[4] = -2; v[4] <= 2; v[4]++)
+        for (v[5] = -2; v[5] <= 2; v[5]++)
+        for (v[6] = -2; v[6] <= 2; v[6]++)
+        for (v[7] = -2; v[7] <= 2; v[7]++)
+        for (v[8] = -2; v[8] <= 2; v[8]++) {
+            for (int t = 0; t < 9; t++) m[t / 3][t % 3] = v[t];
+            int got = (Integer) det.invoke(null, (Object) m);
+            combos++;
+            if (got != referenceDet(m)) {
+                failures++;
+                if (failures < 6) System.out.println("  FAIL exhaustive");
+            }
+        }
+        System.out.println("  exhaustive [-2..2]^9: " + combos);
+
+        Random rnd = new Random(12345);
+        int maxAbs = 0;
+        for (int t = 0; t < 300000; t++) {
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 3; c++) {
+                    m[r][c] = rnd.nextInt(21) - 10;
+                }
+            }
+            int got = (Integer) det.invoke(null, (Object) m);
+            maxAbs = Math.max(maxAbs, Math.abs(got));
+            if (got != referenceDet(m)) {
+                failures++;
+                if (failures < 6) System.out.println("  FAIL random");
+            }
+        }
+        System.out.println("  random full-range: 300000   max |det| = " + maxAbs);
+    }
+
+    static void testMultiply() throws Exception {
+        System.out.println("--- matrix product ---");
+        Class<?> cls = Class.forName("com.example.detmatrix.MatMulActivity");
+        Method mul = cls.getDeclaredMethod("multiply", int[][].class, int[][].class);
+        mul.setAccessible(true);
+
+        Object[][] cases = {
+                {new int[][]{{1, 2}, {3, 4}}, new int[][]{{5, 6}, {7, 8}},
+                        new int[][]{{19, 22}, {43, 50}}},
+                {new int[][]{{1, 2, 3}, {4, 5, 6}}, new int[][]{{7, 8}, {9, 10}, {11, 12}},
+                        new int[][]{{58, 64}, {139, 154}}},
+                {new int[][]{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, new int[][]{{2, -3}, {4, 5}, {-6, 7}},
+                        new int[][]{{2, -3}, {4, 5}, {-6, 7}}},
+                {new int[][]{{0, 0}, {0, 0}}, new int[][]{{9, 8}, {7, 6}},
+                        new int[][]{{0, 0}, {0, 0}}},
+                {new int[][]{{-1, 2}, {3, -4}}, new int[][]{{-5, -6}, {-7, -8}},
+                        new int[][]{{-9, -10}, {13, 14}}},
+        };
+        for (int ci = 0; ci < cases.length; ci++) {
+            int[][] got = (int[][]) mul.invoke(null, cases[ci][0], cases[ci][1]);
+            check(Arrays.deepEquals(got, (int[][]) cases[ci][2]),
+                    "known[" + ci + "] got=" + Arrays.deepToString(got)
+                            + " want=" + Arrays.deepToString((int[][]) cases[ci][2]));
+        }
+        System.out.println("  known products: " + cases.length + " checked");
+
+        // ---- shape space, read from the screen's own option arrays ----
+        int[] inner = staticIntArray(cls, "INNER_OPTIONS");
+        int[] wide = staticIntArray(cls, "SIZE_OPTIONS_WIDE");
+        int[] narrow = staticIntArray(cls, "SIZE_OPTIONS_NARROW");
+        System.out.println("  screen options: inner=" + Arrays.toString(inner)
+                + " wide=" + Arrays.toString(wide) + " narrow=" + Arrays.toString(narrow));
+
+        Set<String> produced = new TreeSet<String>();
+        for (int k : inner) {
+            int[] opts = (k == 3) ? narrow : wide;
+            for (int m : opts) {
+                for (int n : opts) {
+                    produced.add(m + "x" + k + "/" + k + "x" + n);
+                }
+            }
+        }
+        Set<String> required = new TreeSet<String>(Arrays.asList(
+                "2x2/2x2", "2x2/2x3", "2x2/2x4",
+                "3x2/2x2", "3x2/2x3", "3x2/2x4",
+                "4x2/2x2", "4x2/2x3", "4x2/2x4",
+                "2x3/3x2", "2x3/3x3",
+                "3x3/3x2", "3x3/3x3"));
+        System.out.println("  selectable shapes: " + produced.size() + " (expected 13)");
+        if (!produced.equals(required)) {
+            Set<String> missing = new TreeSet<String>(required);
+            missing.removeAll(produced);
+            Set<String> extra = new TreeSet<String>(produced);
+            extra.removeAll(required);
+            check(false, "shape space  missing=" + missing + " extra=" + extra);
+        }
+
+        // ---- every shape: random full-range comparison ----
+        Random rnd = new Random(999);
+        int perShape = 4000;
+        long checks = 0;
+        int maxAbs = 0;
+        for (int k : inner) {
+            int[] opts = (k == 3) ? narrow : wide;
+            for (int m : opts) {
+                for (int n : opts) {
+                    for (int t = 0; t < perShape; t++) {
+                        int[][] a = new int[m][k];
+                        int[][] b = new int[k][n];
+                        for (int i = 0; i < m; i++)
+                            for (int j = 0; j < k; j++) a[i][j] = rnd.nextInt(21) - 10;
+                        for (int i = 0; i < k; i++)
+                            for (int j = 0; j < n; j++) b[i][j] = rnd.nextInt(21) - 10;
+                        int[][] got = (int[][]) mul.invoke(null, a, b);
+                        int[][] want = referenceMultiply(a, b);
+                        checks++;
+                        for (int i = 0; i < m; i++)
+                            for (int j = 0; j < n; j++)
+                                maxAbs = Math.max(maxAbs, Math.abs(got[i][j]));
+                        if (!Arrays.deepEquals(got, want)) {
+                            failures++;
+                            if (failures < 6) {
+                                System.out.println("  FAIL shape " + m + "x" + k + "/" + k + "x" + n);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        System.out.println("  random checks over all shapes: " + checks + "   max |c| = " + maxAbs);
+
+        // ---- exhaustive 2x2 * 2x2 over [-2,2]^8 ----
+        long combos = 0;
+        int[] v = new int[8];
+        for (v[0] = -2; v[0] <= 2; v[0]++)
+        for (v[1] = -2; v[1] <= 2; v[1]++)
+        for (v[2] = -2; v[2] <= 2; v[2]++)
+        for (v[3] = -2; v[3] <= 2; v[3]++)
+        for (v[4] = -2; v[4] <= 2; v[4]++)
+        for (v[5] = -2; v[5] <= 2; v[5]++)
+        for (v[6] = -2; v[6] <= 2; v[6]++)
+        for (v[7] = -2; v[7] <= 2; v[7]++) {
+            int[][] a = {{v[0], v[1]}, {v[2], v[3]}};
+            int[][] b = {{v[4], v[5]}, {v[6], v[7]}};
+            int[][] got = (int[][]) mul.invoke(null, a, b);
+            combos++;
+            if (!Arrays.deepEquals(got, referenceMultiply(a, b))) {
+                failures++;
+                if (failures < 6) System.out.println("  FAIL exhaustive 2x2");
+            }
+        }
+        System.out.println("  exhaustive 2x2*2x2 over [-2..2]^8: " + combos);
+    }
+
+    public static void main(String[] args) throws Exception {
+        testDeterminant();
+        System.out.println();
+        testMultiply();
+        System.out.println();
+        System.out.println(failures == 0 ? "RESULT: ALL PASS" : "RESULT: " + failures + " FAILURES");
+        if (failures != 0) System.exit(1);
+    }
+}

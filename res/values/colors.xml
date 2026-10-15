@@ -11,8 +11,13 @@
     <color name="timer">#FF2F6FED</color>
     <color name="answer">#FF0B8A4B</color>
     <color name="primary">#FF2F6FED</color>
+    <color name="navy_button">#FF3B4A63</color>
     <color name="secondary">#FFE3E8F0</color>
     <color name="secondary_text">#FF2A3547</color>
+
+    <!-- Size selector chips -->
+    <color name="chip_text">#FF2A3547</color>
+    <color name="chip_text_selected">#FFFFFFFF</color>
 
     <color name="icon_bg">#FF2F6FED</color>
     <color name="icon_fg">#FFFFFFFF</color>
