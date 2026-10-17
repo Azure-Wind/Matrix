@@ -368,8 +368,8 @@ public class MatMulActivity extends Activity {
         if (practiceMode) {
             // Counts as correct unless the user already said they got it wrong.
             if (!practiceMarkedWrong && wrongKey != null) {
-                int streak = WrongBook.markCorrect(this, wrongKey, wrongIndex);
-                practiceNote.setText(streak >= WrongBook.MASTERY_STREAK
+                int now = WrongBook.markCorrect(this, wrongKey, wrongIndex);
+                practiceNote.setText(now == WrongBook.STATE_GREEN
                         ? R.string.practice_done : R.string.practice_done_again);
                 practiceNote.setVisibility(View.VISIBLE);
             }
@@ -407,7 +407,8 @@ public class MatMulActivity extends Activity {
         }
         String key = WrongBook.keyForShape(Shapes.indexOf(rowsA, innerK, colsB));
         boolean added = WrongBook.add(this, key, new WrongBook.Item(
-                rowsA, innerK, colsB, flatten(valuesA), flatten(valuesB), 0, false));
+                rowsA, innerK, colsB, flatten(valuesA), flatten(valuesB),
+                WrongBook.STATE_WHITE));
         markedWrong = true;
         toast(added ? R.string.toast_marked : R.string.toast_already);
     }

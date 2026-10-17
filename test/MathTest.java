@@ -307,64 +307,63 @@ public class MathTest {
     }
 
     /**
-     * Wrong-book colour rules, checked through the real (pure) WrongBook.state:
-     * two correct redos in a row make an entry green; a wrong redo turns it red
-     * at once, even from green; one correct redo after red gives white again.
+     * Wrong-book colour rules, checked through the real (pure) WrongBook.nextState:
+     *   WHITE + correct -> GREEN     one correct redo is enough from white
+     *   RED   + correct -> WHITE     then one more correct redo turns it green
+     *   GREEN + correct -> GREEN
+     *   any   + wrong   -> RED       always straight back to red
      */
     static void testWrongBookState() throws Exception {
         System.out.println("--- wrong-book state rules ---");
         Class<?> cls = Class.forName("com.example.detmatrix.WrongBook");
-        Method state = cls.getDeclaredMethod("state", int.class, boolean.class);
-        state.setAccessible(true);
-        Field fWhite = cls.getDeclaredField("STATE_WHITE");
-        Field fRed = cls.getDeclaredField("STATE_RED");
-        Field fGreen = cls.getDeclaredField("STATE_GREEN");
-        setAccessible(fWhite);
-        setAccessible(fRed);
-        setAccessible(fGreen);
-        int white = fWhite.getInt(null);
-        int red = fRed.getInt(null);
-        int green = fGreen.getInt(null);
+        Method next = cls.getDeclaredMethod("nextState", int.class, boolean.class);
+        next.setAccessible(true);
+        int white = staticState(cls, "STATE_WHITE");
+        int red = staticState(cls, "STATE_RED");
+        int green = staticState(cls, "STATE_GREEN");
         check(white != red && red != green && white != green, "states must be distinct");
 
-        // (streak, lastWrong, expected)
+        // (current, correct, expected)
         int[][] cases = {
-                {0, 0, white},
-                {1, 0, white},
-                {2, 0, green},
-                {3, 0, green},
-                {0, 1, red},
-                {1, 1, red},
+                {white, 1, green},   // white + correct -> green, no streak needed
+                {green, 1, green},   // already green stays green
+                {red, 1, white},     // red + correct -> white
+                {white, 0, red},
+                {green, 0, red},     // a wrong redo leaves green immediately
+                {red, 0, red},
         };
         for (int[] c : cases) {
-            int got = (Integer) state.invoke(null, c[0], c[1] == 1);
-            check(got == c[2], "state(" + c[0] + "," + (c[1] == 1) + ") = " + got
-                    + " expected " + c[2]);
+            int got = (Integer) next.invoke(null, c[0], c[1] == 1);
+            check(got == c[2], "nextState(" + name(c[0], white, red, green) + ","
+                    + (c[1] == 1 ? "correct" : "wrong") + ") = "
+                    + name(got, white, red, green) + " expected "
+                    + name(c[2], white, red, green));
         }
 
-        // Walk the sequence the user described and check the colour each time.
-        int streak = 0;
-        boolean lastWrong = false;
-        String[] steps = {"correct", "correct", "wrong", "correct", "correct", "wrong"};
-        int[] want = {white, green, red, white, green, red};
+        // The sequence the user described: one right makes it green; a wrong redo
+        // drops it to red; then it takes two right ones to get back.
+        int st = white;
+        String[] steps = {"correct", "wrong", "correct", "correct"};
+        int[] want = {green, red, white, green};
         for (int i = 0; i < steps.length; i++) {
-            if (steps[i].equals("correct")) {
-                streak = Math.min(2, streak + 1);
-                lastWrong = false;
-            } else {
-                streak = 0;
-                lastWrong = true;
-            }
-            int got = (Integer) state.invoke(null, streak, lastWrong);
-            check(got == want[i], "after " + steps[i] + " #" + (i + 1)
-                    + " state = " + got + " expected " + want[i]);
+            st = (Integer) next.invoke(null, st, steps[i].equals("correct"));
+            check(st == want[i], "after " + steps[i] + " #" + (i + 1)
+                    + " state = " + name(st, white, red, green)
+                    + " expected " + name(want[i], white, red, green));
         }
-        System.out.println("  sequence correct,correct,wrong,correct,correct,wrong");
-        System.out.println("  colours white,green,red,white,green,red  all as expected");
+        System.out.println("  white +correct -> green      (one correct is enough)");
+        System.out.println("  green +wrong   -> red");
+        System.out.println("  red   +correct -> white, +correct -> green");
     }
 
-    static void setAccessible(Field f) {
+    static int staticState(Class<?> cls, String field) throws Exception {
+        Field f = cls.getDeclaredField(field);
         f.setAccessible(true);
+        return f.getInt(null);
+    }
+
+    static String name(int state, int white, int red, int green) {
+        return state == white ? "white" : (state == red ? "red" : "green");
     }
 
     public static void main(String[] args) throws Exception {

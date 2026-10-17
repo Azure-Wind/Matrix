@@ -64,11 +64,11 @@
     <string name="wrong_empty">这个错题集还是空的</string>
     <string name="wrong_count">共 %1$d 道</string>
     <string name="wrong_done_count">已掌握 %1$d / %2$d</string>
-    <string name="wrong_tap_hint">点击序号重做：连对 2 次变绿，做错立刻变红</string>
+    <string name="wrong_tap_hint">点击序号重做：做对即变绿，做错立刻变红；红色状态要做对 2 次才回绿</string>
 
     <!-- Redo a saved problem -->
     <string name="practice_hint">错题重做</string>
     <string name="practice_done">已完成 ✓</string>
-    <string name="practice_done_again">已完成 ✓　再连对一次就变绿</string>
+    <string name="practice_done_again">已完成 ✓　再对一次就变绿</string>
     <string name="reveal_progress">%1$d / %2$d</string>
 </resources>

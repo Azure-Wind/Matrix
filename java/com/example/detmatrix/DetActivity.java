@@ -211,8 +211,8 @@ public class DetActivity extends Activity {
             practiceAnswered = true;
             // Counts as correct unless the user already said they got it wrong.
             if (!practiceMarkedWrong && wrongKey != null) {
-                int streak = WrongBook.markCorrect(this, wrongKey, wrongIndex);
-                practiceNote.setText(streak >= WrongBook.MASTERY_STREAK
+                int now = WrongBook.markCorrect(this, wrongKey, wrongIndex);
+                practiceNote.setText(now == WrongBook.STATE_GREEN
                         ? R.string.practice_done : R.string.practice_done_again);
                 practiceNote.setVisibility(View.VISIBLE);
             }
@@ -255,7 +255,8 @@ public class DetActivity extends Activity {
             }
         }
         boolean added = WrongBook.add(this, WrongBook.KEY_DET,
-                new WrongBook.Item(SIZE, SIZE, SIZE, flat, new int[0], 0, false));
+                new WrongBook.Item(SIZE, SIZE, SIZE, flat, new int[0],
+                        WrongBook.STATE_WHITE));
         markedWrong = true;
         toast(added ? R.string.toast_marked : R.string.toast_already);
     }
