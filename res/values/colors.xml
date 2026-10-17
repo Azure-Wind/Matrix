@@ -23,7 +23,14 @@
     <color name="danger">#FFC9453F</color>
     <color name="done_green">#FF0B8A4B</color>
     <color name="done_green_border">#FF086B3A</color>
+    <color name="wrong_red">#FFD13B33</color>
+    <color name="wrong_red_border">#FF9E241D</color>
     <color name="pill_text">#FF2A3547</color>
+
+    <!-- Statistics: darker than the generic labels so the numbers stay legible
+         over the artwork (the soft white halo washed thin text out). -->
+    <color name="stats_label">#FF2B3644</color>
+    <color name="stats_value">#FF05090E</color>
 
     <color name="icon_bg">#FF2F6FED</color>
     <color name="icon_fg">#FFFFFFFF</color>

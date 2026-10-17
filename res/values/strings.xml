@@ -43,6 +43,8 @@
     <string name="toast_marked">已加入错题集</string>
     <string name="toast_already">这道题已经在错题集里了</string>
     <string name="toast_need_numbers">请先点击「下一个」生成题目</string>
+    <string name="toast_redo_wrong">已记为做错，序号变红</string>
+    <string name="toast_redo_wrong_once">本题本轮已经记为做错了</string>
 
     <!-- Statistics screen -->
     <string name="stats_title">成绩统计</string>
@@ -61,11 +63,12 @@
     <string name="wrong_title_det">行列式错题集</string>
     <string name="wrong_empty">这个错题集还是空的</string>
     <string name="wrong_count">共 %1$d 道</string>
-    <string name="wrong_done_count">已做 %1$d / %2$d</string>
-    <string name="wrong_tap_hint">点击序号可以重做这道错题，做完会变绿</string>
+    <string name="wrong_done_count">已掌握 %1$d / %2$d</string>
+    <string name="wrong_tap_hint">点击序号重做：连对 2 次变绿，做错立刻变红</string>
 
     <!-- Redo a saved problem -->
     <string name="practice_hint">错题重做</string>
-    <string name="practice_done">已完成 ✓　返回后序号会变绿</string>
+    <string name="practice_done">已完成 ✓</string>
+    <string name="practice_done_again">已完成 ✓　再连对一次就变绿</string>
     <string name="reveal_progress">%1$d / %2$d</string>
 </resources>

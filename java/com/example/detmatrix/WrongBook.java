@@ -10,8 +10,24 @@ import java.util.List;
  * Wrong-answer book. The determinant mode has a single collection; matrix
  * multiplication keeps 27 collections, one per size combination. Each
  * collection is one SharedPreferences key holding ';'-separated entries.
+ *
+ * Every entry tracks how many redos it has got right in a row, which gives it
+ * one of three visual states:
+ *
+ *   WHITE  never redone correctly yet, and the last redo was not wrong
+ *   RED    the last redo was reported as wrong
+ *   GREEN  mastered: two correct redos in a row
+ *
+ * A wrong redo drops straight back to RED, even from GREEN.
  */
 final class WrongBook {
+
+    static final int STATE_WHITE = 0;
+    static final int STATE_RED = 1;
+    static final int STATE_GREEN = 2;
+
+    /** Consecutive correct redos required for GREEN. */
+    static final int MASTERY_STREAK = 2;
 
     private static final String PREFS = "detmatrix_wrong";
 
@@ -25,6 +41,24 @@ final class WrongBook {
         return "wrong_mm_" + shapeIndex;
     }
 
+    /**
+     * Visual state for a (streak, lastWrong) pair. Deliberately pure and static
+     * so the rules can be checked without a Context.
+     */
+    static int state(int streak, boolean lastWrong) {
+        if (streak >= MASTERY_STREAK) {
+            return STATE_GREEN;
+        }
+        if (lastWrong) {
+            return STATE_RED;
+        }
+        return STATE_WHITE;
+    }
+
+    static int state(Item item) {
+        return state(item.streak, item.lastWrong);
+    }
+
     /** One saved problem: A is m x k, B is k x n; B is empty in determinant mode. */
     static final class Item {
         final int m;
@@ -32,15 +66,19 @@ final class WrongBook {
         final int n;
         final int[] a;
         final int[] b;
-        boolean done;
+        /** Consecutive correct redos, capped at {@link #MASTERY_STREAK}. */
+        int streak;
+        /** Whether the most recent redo was reported as wrong. */
+        boolean lastWrong;
 
-        Item(int m, int k, int n, int[] a, int[] b, boolean done) {
+        Item(int m, int k, int n, int[] a, int[] b, int streak, boolean lastWrong) {
             this.m = m;
             this.k = k;
             this.n = n;
             this.a = a;
             this.b = b;
-            this.done = done;
+            this.streak = streak;
+            this.lastWrong = lastWrong;
         }
 
         String encode() {
@@ -49,7 +87,7 @@ final class WrongBook {
             join(sb, a);
             sb.append('|');
             join(sb, b);
-            sb.append('|').append(done ? 1 : 0);
+            sb.append('|').append(streak).append(',').append(lastWrong ? 1 : 0);
             return sb.toString();
         }
 
@@ -66,8 +104,18 @@ final class WrongBook {
                 int m = Integer.parseInt(d[0].trim());
                 int k = Integer.parseInt(d[1].trim());
                 int n = Integer.parseInt(d[2].trim());
+                int streak = 0;
+                boolean lastWrong = false;
+                // Older builds stored a single 0/1 "done" flag here.
+                String[] st = parts[3].split(",");
+                if (st.length >= 2) {
+                    streak = Integer.parseInt(st[0].trim());
+                    lastWrong = "1".equals(st[1].trim());
+                } else if (st.length == 1 && "1".equals(st[0].trim())) {
+                    streak = MASTERY_STREAK;
+                }
                 return new Item(m, k, n, splitInts(parts[1]), splitInts(parts[2]),
-                        "1".equals(parts[3].trim()));
+                        streak, lastWrong);
             } catch (NumberFormatException e) {
                 return null;
             }
@@ -125,6 +173,17 @@ final class WrongBook {
         return list(c, key).size();
     }
 
+    /** How many entries in this collection are mastered (green). */
+    static int masteredCount(Context c, String key) {
+        int n = 0;
+        for (Item it : list(c, key)) {
+            if (state(it) == STATE_GREEN) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     /**
      * Add one wrong answer. A problem whose A and B are identical to an existing
      * entry is not added twice. Returns whether something was actually added.
@@ -141,12 +200,31 @@ final class WrongBook {
         return true;
     }
 
-    static void markDone(Context c, String key, int index) {
+    /**
+     * Record a correct redo. Returns the new streak so the caller can tell the
+     * user whether one more is needed.
+     */
+    static int markCorrect(Context c, String key, int index) {
+        List<Item> items = list(c, key);
+        if (index < 0 || index >= items.size()) {
+            return 0;
+        }
+        Item it = items.get(index);
+        it.streak = Math.min(MASTERY_STREAK, it.streak + 1);
+        it.lastWrong = false;
+        save(c, key, items);
+        return it.streak;
+    }
+
+    /** Record a wrong redo: the entry goes back to red whatever it was before. */
+    static void markWrongAttempt(Context c, String key, int index) {
         List<Item> items = list(c, key);
         if (index < 0 || index >= items.size()) {
             return;
         }
-        items.get(index).done = true;
+        Item it = items.get(index);
+        it.streak = 0;
+        it.lastWrong = true;
         save(c, key, items);
     }
 

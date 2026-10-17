@@ -306,10 +306,73 @@ public class MathTest {
         System.out.println("  exhaustive 2x2*2x2 over [-2..2]^8: " + combos);
     }
 
+    /**
+     * Wrong-book colour rules, checked through the real (pure) WrongBook.state:
+     * two correct redos in a row make an entry green; a wrong redo turns it red
+     * at once, even from green; one correct redo after red gives white again.
+     */
+    static void testWrongBookState() throws Exception {
+        System.out.println("--- wrong-book state rules ---");
+        Class<?> cls = Class.forName("com.example.detmatrix.WrongBook");
+        Method state = cls.getDeclaredMethod("state", int.class, boolean.class);
+        state.setAccessible(true);
+        Field fWhite = cls.getDeclaredField("STATE_WHITE");
+        Field fRed = cls.getDeclaredField("STATE_RED");
+        Field fGreen = cls.getDeclaredField("STATE_GREEN");
+        setAccessible(fWhite);
+        setAccessible(fRed);
+        setAccessible(fGreen);
+        int white = fWhite.getInt(null);
+        int red = fRed.getInt(null);
+        int green = fGreen.getInt(null);
+        check(white != red && red != green && white != green, "states must be distinct");
+
+        // (streak, lastWrong, expected)
+        int[][] cases = {
+                {0, 0, white},
+                {1, 0, white},
+                {2, 0, green},
+                {3, 0, green},
+                {0, 1, red},
+                {1, 1, red},
+        };
+        for (int[] c : cases) {
+            int got = (Integer) state.invoke(null, c[0], c[1] == 1);
+            check(got == c[2], "state(" + c[0] + "," + (c[1] == 1) + ") = " + got
+                    + " expected " + c[2]);
+        }
+
+        // Walk the sequence the user described and check the colour each time.
+        int streak = 0;
+        boolean lastWrong = false;
+        String[] steps = {"correct", "correct", "wrong", "correct", "correct", "wrong"};
+        int[] want = {white, green, red, white, green, red};
+        for (int i = 0; i < steps.length; i++) {
+            if (steps[i].equals("correct")) {
+                streak = Math.min(2, streak + 1);
+                lastWrong = false;
+            } else {
+                streak = 0;
+                lastWrong = true;
+            }
+            int got = (Integer) state.invoke(null, streak, lastWrong);
+            check(got == want[i], "after " + steps[i] + " #" + (i + 1)
+                    + " state = " + got + " expected " + want[i]);
+        }
+        System.out.println("  sequence correct,correct,wrong,correct,correct,wrong");
+        System.out.println("  colours white,green,red,white,green,red  all as expected");
+    }
+
+    static void setAccessible(Field f) {
+        f.setAccessible(true);
+    }
+
     public static void main(String[] args) throws Exception {
         testDeterminant();
         System.out.println();
         testMultiply();
+        System.out.println();
+        testWrongBookState();
         System.out.println();
         System.out.println(failures == 0 ? "RESULT: ALL PASS" : "RESULT: " + failures + " FAILURES");
         if (failures != 0) System.exit(1);

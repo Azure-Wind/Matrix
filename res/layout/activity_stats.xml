@@ -44,12 +44,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:shadowColor="@color/text_glow"
-                android:shadowDx="0"
-                android:shadowDy="1"
-                android:shadowRadius="5"
-                android:textColor="@color/hint"
-                android:textSize="14sp" />
+                android:textColor="@color/stats_label"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/empty_note"
@@ -78,12 +75,9 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="26dp"
-                    android:shadowColor="@color/text_glow"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="5"
-                    android:textColor="@color/hint"
-                    android:textSize="14sp" />
+                    android:textColor="@color/stats_label"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/avg_value"
@@ -106,24 +100,18 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="4dp"
-                    android:shadowColor="@color/text_glow"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="5"
-                    android:textColor="@color/hint"
-                    android:textSize="14sp" />
+                    android:textColor="@color/stats_label"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/recent_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="28dp"
-                    android:shadowColor="@color/text_glow"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="5"
-                    android:textColor="@color/hint"
-                    android:textSize="14sp" />
+                    android:textColor="@color/stats_label"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/recent_list"
@@ -131,13 +119,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:fontFamily="monospace"
-                    android:lineSpacingExtra="6dp"
-                    android:shadowColor="@color/text_glow"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="5"
-                    android:textColor="@color/number"
-                    android:textSize="15sp" />
+                    android:lineSpacingExtra="8dp"
+                    android:textColor="@color/stats_value"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
         </LinearLayout>

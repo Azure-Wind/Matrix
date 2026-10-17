@@ -78,6 +78,8 @@ public class MatMulActivity extends Activity {
     private boolean practiceMode;
     private String wrongKey;
     private int wrongIndex;
+    /** In redo mode: this visit has already been reported as wrong. */
+    private boolean practiceMarkedWrong;
 
     private final ElapsedTimer timer = new ElapsedTimer(new ElapsedTimer.Listener() {
         @Override
@@ -161,11 +163,13 @@ public class MatMulActivity extends Activity {
         }
     }
 
-    /** Redo mode: change the title and hide the controls that make no sense here. */
+    /**
+     * Redo mode: change the title and hide the controls that make no sense here.
+     * "Wrong" stays visible so a problem can be reported wrong again.
+     */
     private void applyPracticeUi() {
         ((TextView) findViewById(R.id.screen_title)).setText(R.string.practice_hint);
         findViewById(R.id.next).setVisibility(View.GONE);
-        findViewById(R.id.mark_wrong).setVisibility(View.GONE);
         findViewById(R.id.wrong_book).setVisibility(View.GONE);
         findViewById(R.id.stats).setVisibility(View.GONE);
     }
@@ -357,26 +361,44 @@ public class MatMulActivity extends Activity {
 
     /**
      * The last cell is revealed: in normal mode record the time, in redo mode
-     * mark the problem done.
+     * count this redo as correct.
      */
     private void onAllRevealed() {
         answerHint.setText("");
         if (practiceMode) {
-            if (wrongKey != null) {
-                WrongBook.markDone(this, wrongKey, wrongIndex);
+            // Counts as correct unless the user already said they got it wrong.
+            if (!practiceMarkedWrong && wrongKey != null) {
+                int streak = WrongBook.markCorrect(this, wrongKey, wrongIndex);
+                practiceNote.setText(streak >= WrongBook.MASTERY_STREAK
+                        ? R.string.practice_done : R.string.practice_done_again);
+                practiceNote.setVisibility(View.VISIBLE);
             }
-            practiceNote.setText(R.string.practice_done);
-            practiceNote.setVisibility(View.VISIBLE);
         } else if (!roundRecorded) {
             roundRecorded = true;
             StatsStore.record(this, StatsStore.MODE_MATMUL, timer.elapsed());
         }
     }
 
-    /** "Wrong": add the current problem to the collection for this size. */
+    /**
+     * "Wrong". Normal mode: add the current problem to the collection for this
+     * size. Redo mode: report that this redo went wrong, which turns it red.
+     */
     private void onMarkWrong() {
         if (!hasNumbers) {
             toast(R.string.toast_need_numbers);
+            return;
+        }
+        if (practiceMode) {
+            if (practiceMarkedWrong) {
+                toast(R.string.toast_redo_wrong_once);
+                return;
+            }
+            if (wrongKey != null) {
+                WrongBook.markWrongAttempt(this, wrongKey, wrongIndex);
+            }
+            practiceMarkedWrong = true;
+            practiceNote.setVisibility(View.GONE);
+            toast(R.string.toast_redo_wrong);
             return;
         }
         if (markedWrong) {
@@ -385,7 +407,7 @@ public class MatMulActivity extends Activity {
         }
         String key = WrongBook.keyForShape(Shapes.indexOf(rowsA, innerK, colsB));
         boolean added = WrongBook.add(this, key, new WrongBook.Item(
-                rowsA, innerK, colsB, flatten(valuesA), flatten(valuesB), false));
+                rowsA, innerK, colsB, flatten(valuesA), flatten(valuesB), 0, false));
         markedWrong = true;
         toast(added ? R.string.toast_marked : R.string.toast_already);
     }

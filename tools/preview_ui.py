@@ -238,17 +238,19 @@ def screen_stats(art, f22, f14, f34, f15):
     im = base_screen(art)
     d = ImageDraw.Draw(im)
     cx = W // 2
+    LABEL = (43, 54, 68)      # stats_label
+    VALUE = (5, 9, 14)        # stats_value
     draw_center(d, "成绩统计", f22, cx, px(76), NUMBER)
-    draw_center(d, "矩阵相乘", f14, cx, px(102), HINT)
-    draw_center(d, "最近 100 次平均", f14, cx, px(152), HINT)
+    draw_center(d, "矩阵相乘", f14, cx, px(102), LABEL)
+    draw_center(d, "最近 100 次平均", f14, cx, px(152), LABEL)
     draw_center(d, "18.7 秒", f34, cx, px(190), TIMER)
-    draw_center(d, "总次数：43 次", f14, cx, px(228), HINT)
+    draw_center(d, "总次数：43 次", f14, cx, px(228), LABEL)
     left = px(24)
-    d.text((left, px(268)), "最近 10 次", font=f14, fill=HINT)
+    d.text((left, px(268)), "最近 10 次", font=f14, fill=LABEL)
     times = ["23.5 秒", "18.2 秒", "31.0 秒", "12.4 秒", "9.8 秒",
              "27.6 秒", "15.3 秒", "21.1 秒", "19.0 秒", "16.7 秒"]
     for i, t in enumerate(times):
-        d.text((left, px(292 + i * 20)), "%d.   %s" % (i + 1, t), font=f15, fill=NUMBER)
+        d.text((left, px(294 + i * 21)), "%d.   %s" % (i + 1, t), font=f15, fill=VALUE)
     back_button(d)
     return im
 
@@ -283,23 +285,31 @@ def screen_wrong_list(art, f22, f13, f18, f12):
     im = base_screen(art)
     d = ImageDraw.Draw(im)
     cx = W // 2
+    RED = (209, 59, 51)       # wrong_red
+    RED_B = (158, 36, 29)
     draw_center(d, "(3×3,3×3)", f22, cx, px(76), NUMBER)
-    draw_center(d, "共 8 道　·　已做 3 / 8", f13, cx, px(102), HINT)
-    total, done = 8, 3
-    top, bh, gapx, gapy = px(140), px(50), px(8), px(8)
-    gx = px(16)
-    colw = (W - 2 * gx - 4 * gapx) // 5
+    draw_center(d, "共 8 道　·　已掌握 2 / 8", f13, cx, px(102), (43, 54, 68))
+    total = 8
+    # 0,1 green (mastered)  2 red (last redo wrong)  3.. white
+    states = [GREEN, GREEN, RED] + [WHITE] * 5
+    top, bh = px(140), px(64)
+    cell, step, x0 = px(72), px(82), px(16)
     for i in range(total):
-        r, c = i // 5, i % 5
-        x = gx + c * (colw + gapx)
-        y = top + r * (bh + gapy)
-        is_done = i < done
-        d.rounded_rectangle([x, y, x + colw, y + bh], radius=px(9),
-                            fill=GREEN if is_done else WHITE,
-                            outline=(8, 107, 58) if is_done else BORDER, width=max(1, px(1)))
-        draw_center(d, str(i + 1), f18, x + colw // 2, y + bh // 2,
-                    WHITE if is_done else NUMBER)
-    draw_center(d, "点击序号可以重做这道错题，做完会变绿", f12, cx, top + 2 * (bh + gapy) + px(24), HINT)
+        r, c = i // 4, i % 4
+        x = x0 + c * step
+        y = top + r * (bh + px(10))
+        st = states[i]
+        if st == GREEN:
+            fill, edge, txt = GREEN, (8, 107, 58), WHITE
+        elif st == RED:
+            fill, edge, txt = RED, RED_B, WHITE
+        else:
+            fill, edge, txt = WHITE, BORDER, NUMBER
+        d.rounded_rectangle([x, y, x + cell, y + bh], radius=px(10),
+                            fill=fill, outline=edge, width=max(1, px(1)))
+        draw_center(d, str(i + 1), f22, x + cell // 2, y + bh // 2, txt)
+    hint_y = top + 2 * (bh + px(10)) + px(18)
+    draw_center(d, "点击序号重做：连对 2 次变绿，做错立刻变红", f12, cx, hint_y, (43, 54, 68))
     back_button(d)
     return im
 
@@ -315,7 +325,7 @@ home = screen_home(art, font(18, True), font(28, True), font(14), font(13))
 step = screen_step(art, font(13, True), font(24, True), font(22, True), font(13))
 stats = screen_stats(art, font(22, True), font(14), font(34, True), font(15))
 shapes = screen_wrong_shapes(art, font(22, True), font(13), font(14))
-wlist = screen_wrong_list(art, font(22, True), font(13), font(18, True), font(12))
+wlist = screen_wrong_list(art, font(22, True), font(13), font(22, True), font(12))
 
 
 def sheet(panels, path, cols):

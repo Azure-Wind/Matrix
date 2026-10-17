@@ -14,16 +14,22 @@ import android.widget.TextView;
 import java.util.List;
 
 /**
- * Contents of one wrong-answer collection: numbers only. A number that has not
- * been redone is white; once redone it turns green. Tapping a number opens the
- * timed redo screen for that problem.
+ * Contents of one wrong-answer collection: numbers only.
+ *
+ * Each number is coloured by {@link WrongBook#state}:
+ *   white  not mastered yet
+ *   red    the last redo was reported as wrong
+ *   green  two correct redos in a row
+ *
+ * Tapping a number opens the timed redo screen for that problem.
  */
 public class WrongListActivity extends Activity {
 
     static final String EXTRA_IS_DET = "isDet";
     static final String EXTRA_SHAPE = "shape";
 
-    private static final int COLS = 5;
+    /** Four per row leaves room for two-digit numbers. */
+    private static final int COLS = 4;
 
     private boolean isDet;
     private int shapeIndex;
@@ -65,22 +71,16 @@ public class WrongListActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Refresh on return from the redo screen so finished numbers turn green.
+        // Refresh on return from the redo screen so the colours are up to date.
         rebuild();
     }
 
     private void rebuild() {
         List<WrongBook.Item> items = WrongBook.list(this, key);
-
-        int done = 0;
-        for (WrongBook.Item it : items) {
-            if (it.done) {
-                done++;
-            }
-        }
+        int mastered = WrongBook.masteredCount(this, key);
 
         subtitleView.setText(getString(R.string.wrong_count, items.size())
-                + "　·　" + getString(R.string.wrong_done_count, done, items.size()));
+                + "　·　" + getString(R.string.wrong_done_count, mastered, items.size()));
 
         numberGrid.removeAllViews();
         if (items.isEmpty()) {
@@ -101,29 +101,41 @@ public class WrongListActivity extends Activity {
                         LinearLayout.LayoutParams.WRAP_CONTENT));
                 numberGrid.addView(row);
             }
-            row.addView(makeNumberButton(i, items.get(i).done));
+            row.addView(makeNumberButton(i, WrongBook.state(items.get(i))));
         }
     }
 
-    private Button makeNumberButton(final int index, boolean done) {
+    private Button makeNumberButton(final int index, int state) {
         Button b = new Button(this);
         b.setText(String.valueOf(index + 1));
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f);
         b.setTypeface(null, Typeface.BOLD);
         b.setGravity(Gravity.CENTER);
         b.setAllCaps(false);
-        // Not redone yet = white; already redone = green.
-        b.setBackgroundResource(done ? R.drawable.chip_done : R.drawable.cell_bg_small);
-        b.setTextColor(getResources().getColor(
-                done ? R.color.chip_text_selected : R.color.number));
+
+        int background;
+        int textColor;
+        if (state == WrongBook.STATE_GREEN) {
+            background = R.drawable.chip_done;
+            textColor = R.color.chip_text_selected;
+        } else if (state == WrongBook.STATE_RED) {
+            background = R.drawable.chip_wrong;
+            textColor = R.color.chip_text_selected;
+        } else {
+            background = R.drawable.cell_bg_small;
+            textColor = R.color.number;
+        }
+        b.setBackgroundResource(background);
+        b.setTextColor(getResources().getColor(textColor));
+
         b.setMinWidth(0);
         b.setMinimumWidth(0);
         b.setMinHeight(0);
         b.setMinimumHeight(0);
         b.setPadding(0, 0, 0, 0);
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(50f), 1f);
-        lp.setMargins(dp(4f), dp(4f), dp(4f), dp(4f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(64f), 1f);
+        lp.setMargins(dp(5f), dp(5f), dp(5f), dp(5f));
         b.setLayoutParams(lp);
 
         b.setOnClickListener(new View.OnClickListener() {
