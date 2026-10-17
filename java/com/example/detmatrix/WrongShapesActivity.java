@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -28,25 +29,37 @@ public class WrongShapesActivity extends Activity {
         });
 
         LinearLayout grid = (LinearLayout) findViewById(R.id.shape_grid);
-        grid.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
 
+        // Fixed cell width: weighted widths can collapse under a wrap_content
+        // parent, so the size is computed from the screen width instead.
+        int cellPx = shapeCellWidthPx();
         LinearLayout row = null;
         for (int i = 0; i < Shapes.COUNT; i++) {
             if (i % COLS == 0) {
                 row = new LinearLayout(this);
                 row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setLayoutParams(new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT));
                 grid.addView(row);
             }
-            row.addView(makeShapeButton(i));
+            row.addView(makeShapeButton(i, cellPx));
         }
     }
 
-    private Button makeShapeButton(final int index) {
+    /** Width of one size button so that COLS of them fit the screen exactly. */
+    private int shapeCellWidthPx() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        float widthDp = dm.widthPixels / dm.density;
+        // Page padding 16dp each side, plus a 4dp margin on each side of a button.
+        float perCol = (widthDp - 32f - COLS * 8f) / COLS;
+        if (perCol > 140f) {
+            perCol = 140f;
+        }
+        if (perCol < 84f) {
+            perCol = 84f;
+        }
+        return Math.round(perCol * dm.density);
+    }
+
+    private Button makeShapeButton(final int index, int cellPx) {
         Button b = new Button(this);
         b.setText(Shapes.label(index));
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
@@ -63,7 +76,7 @@ public class WrongShapesActivity extends Activity {
         b.setPadding(dp(2f), 0, dp(2f), 0);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                0, dp(52f), 1f);
+                cellPx, dp(56f));
         lp.setMargins(dp(4f), dp(4f), dp(4f), dp(4f));
         b.setLayoutParams(lp);
 

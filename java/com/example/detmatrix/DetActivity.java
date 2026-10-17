@@ -59,6 +59,8 @@ public class DetActivity extends Activity {
     private int wrongIndex;
     /** In redo mode: this visit has already been reported as wrong. */
     private boolean practiceMarkedWrong;
+    /** In redo mode: this visit has already been counted (one look per visit). */
+    private boolean practiceAnswered;
 
     private final ElapsedTimer timer = new ElapsedTimer(new ElapsedTimer.Listener() {
         @Override
@@ -190,17 +192,23 @@ public class DetActivity extends Activity {
 
     /**
      * "Show answer": stop the clock and show the determinant. In normal mode the
-     * time is recorded once per round; in redo mode the problem is marked done.
+     * time is recorded once per round; in redo mode the problem is counted once.
      */
     private void onShowAnswer() {
         if (!hasNumbers) {
             setAnswer(getString(R.string.need_numbers));
             return;
         }
+        // In redo mode one look per visit only: otherwise tapping "show answer"
+        // twice would count as two correct redos and turn the entry green.
+        if (practiceMode && practiceAnswered) {
+            return;
+        }
         timer.stop();
         setAnswer(getString(R.string.answer_format, determinant(values)));
 
         if (practiceMode) {
+            practiceAnswered = true;
             // Counts as correct unless the user already said they got it wrong.
             if (!practiceMarkedWrong && wrongKey != null) {
                 int streak = WrongBook.markCorrect(this, wrongKey, wrongIndex);

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -91,21 +92,36 @@ public class WrongListActivity extends Activity {
         emptyNote.setVisibility(View.GONE);
         tapHint.setVisibility(View.VISIBLE);
 
+        // Fixed cell width: weighted widths collapsed to a few pixels here
+        // because number_grid is wrap_content, so the size is computed instead.
+        int cellPx = numberCellWidthPx();
         LinearLayout row = null;
         for (int i = 0; i < items.size(); i++) {
             if (i % COLS == 0) {
                 row = new LinearLayout(this);
                 row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setLayoutParams(new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT));
                 numberGrid.addView(row);
             }
-            row.addView(makeNumberButton(i, WrongBook.state(items.get(i))));
+            row.addView(makeNumberButton(i, WrongBook.state(items.get(i)), cellPx));
         }
     }
 
-    private Button makeNumberButton(final int index, int state) {
+    /** Width of one number button so that COLS of them fit the screen exactly. */
+    private int numberCellWidthPx() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        float widthDp = dm.widthPixels / dm.density;
+        // Page padding 16dp each side, plus a 5dp margin on each side of a button.
+        float perCol = (widthDp - 32f - COLS * 10f) / COLS;
+        if (perCol > 104f) {
+            perCol = 104f;
+        }
+        if (perCol < 56f) {
+            perCol = 56f;
+        }
+        return Math.round(perCol * dm.density);
+    }
+
+    private Button makeNumberButton(final int index, int state, int cellPx) {
         Button b = new Button(this);
         b.setText(String.valueOf(index + 1));
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f);
@@ -134,7 +150,7 @@ public class WrongListActivity extends Activity {
         b.setMinimumHeight(0);
         b.setPadding(0, 0, 0, 0);
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(64f), 1f);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cellPx, dp(64f));
         lp.setMargins(dp(5f), dp(5f), dp(5f), dp(5f));
         b.setLayoutParams(lp);
 
